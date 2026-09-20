@@ -50,6 +50,9 @@ public struct CartView: View {
             .sheet(isPresented: $showOptimizationDetails) {
                 optimizationDetailsSheet
             }
+            .safeAreaInset(edge: .bottom) {
+                Color.clear.frame(height: 85)
+            }
         }
     }
 

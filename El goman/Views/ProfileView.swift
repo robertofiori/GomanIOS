@@ -93,6 +93,9 @@ public struct ProfileView: View {
                 }
             }
             .navigationTitle("Ajustes")
+            .safeAreaInset(edge: .bottom) {
+                Color.clear.frame(height: 85)
+            }
             .sheet(isPresented: $showLocationPicker) {
                 NavigationStack {
                     List(LocationData.availableLocations) { loc in

@@ -78,6 +78,9 @@ public struct OffersView: View {
             }
             .navigationTitle("Ofertas")
             .navigationBarTitleDisplayMode(.large)
+            .safeAreaInset(edge: .bottom) {
+                Color.clear.frame(height: 85)
+            }
             .task {
                 if offers.isEmpty {
                     loadOffers()

@@ -15,46 +15,44 @@ public struct ContentView: View {
         case home = 0
         case cart = 1
         case offers = 2
-        case scanner = 3
-        case profile = 4
+        case profile = 3
+        case scanner = 4
     }
 
     public init() {}
 
     public var body: some View {
-        TabView(selection: $selectedTab) {
-            HomeView()
-                .tabItem {
-                    Label("Inicio", systemImage: "magnifyingglass")
+        ZStack(alignment: .bottom) {
+            // Contenido de las pestañas
+            Group {
+                switch selectedTab {
+                case .home:
+                    HomeView(onNavigateToCart: {
+                        selectedTab = .cart
+                    })
+                case .cart:
+                    CartView()
+                case .offers:
+                    OffersView()
+                case .profile:
+                    ProfileView()
+                case .scanner:
+                    ScannerView()
                 }
-                .tag(TabItem.home)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            CartView()
-                .tabItem {
-                    Label("Mi Lista", systemImage: "cart.fill")
+            // Barra Flotante Inferior Personalizada
+            CustomFloatingTabBar(
+                selectedTab: $selectedTab,
+                cartCount: appState.totalCartUnitsCount,
+                onSearchTap: {
+                    selectedTab = .home
                 }
-                .badge(appState.totalCartUnitsCount > 0 ? "\(appState.totalCartUnitsCount)" : nil)
-                .tag(TabItem.cart)
-
-            OffersView()
-                .tabItem {
-                    Label("Ofertas", systemImage: "tag.fill")
-                }
-                .tag(TabItem.offers)
-
-            ScannerView()
-                .tabItem {
-                    Label("Escanear", systemImage: "barcode.viewfinder")
-                }
-                .tag(TabItem.scanner)
-
-            ProfileView()
-                .tabItem {
-                    Label("Ajustes", systemImage: "gearshape.fill")
-                }
-                .tag(TabItem.profile)
+            )
         }
-        .tint(.green)
+        .ignoresSafeArea(.keyboard, edges: .bottom)
+        .tint(Color(red: 0.13, green: 0.77, blue: 0.36))
         .environment(appState)
     }
 }

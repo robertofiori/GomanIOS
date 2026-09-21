@@ -46,7 +46,7 @@ public struct SupermarketPrice: Identifiable, Codable, Hashable, Sendable {
     public let unitType: String?
     public let ean: String?
 
-    public init(
+    nonisolated public init(
         id: String,
         supermarket: String,
         price: Double,

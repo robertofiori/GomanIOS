@@ -17,13 +17,39 @@ public struct OffersView: View {
     public init() {}
 
     private var supermarkets: [String] {
-        let all = offers.map { $0.supermarket }
-        return Array(Set(all)).sorted()
+        var list = ["Carrefour", "Chango Más", "Cooperativa Obrera", "VEA"]
+        for offer in offers {
+            let sm = offer.supermarket
+            let norm = sm.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current).lowercased()
+            if !list.contains(where: { $0.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current).lowercased() == norm }) {
+                list.append(sm)
+            }
+        }
+        return list.sorted()
     }
 
     private var filteredOffers: [SupermarketPrice] {
         guard let selected = selectedFilter else { return offers }
-        return offers.filter { $0.supermarket == selected }
+        func normalize(_ str: String) -> String {
+            str.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current).lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        let normSelected = normalize(selected)
+        return offers.filter { offer in
+            let normSM = normalize(offer.supermarket)
+            if normSelected.contains("chango") || normSelected.contains("masonline") {
+                return normSM.contains("chango") || normSM.contains("masonline")
+            }
+            if normSelected.contains("coope") {
+                return normSM.contains("coop")
+            }
+            if normSelected.contains("carrefour") {
+                return normSM.contains("carrefour")
+            }
+            if normSelected.contains("vea") {
+                return normSM.contains("vea")
+            }
+            return normSM.contains(normSelected) || normSelected.contains(normSM)
+        }
     }
 
     public var body: some View {
@@ -43,23 +69,32 @@ public struct OffersView: View {
                                 .foregroundColor(Color(red: 0.45, green: 0.52, blue: 0.62))
                         }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    } else if offers.isEmpty {
+                    } else if offers.isEmpty || filteredOffers.isEmpty {
                         VStack(spacing: 14) {
                             Spacer()
                             Image(systemName: "tag.slash")
                                 .font(.system(size: 48))
                                 .foregroundColor(Color(red: 0.58, green: 0.64, blue: 0.72))
-                            Text("No se encontraron ofertas disponibles en este momento.")
+                            Text(selectedFilter == nil ? "No se encontraron ofertas disponibles en este momento." : "No se encontraron ofertas para \(selectedFilter!)")
                                 .font(.montserrat(.bold, size: 16))
                                 .foregroundColor(Color(red: 0.08, green: 0.12, blue: 0.18))
-                            Text("Probá cambiando la ubicación o intentá más tarde.")
+                                .multilineTextAlignment(.center)
+                            Text("Probá cambiando el filtro o intentá más tarde.")
                                 .font(.montserrat(.regular, size: 14))
                                 .foregroundColor(Color(red: 0.58, green: 0.64, blue: 0.72))
-                            Button("Reintentar") {
-                                loadOffers()
+                            if selectedFilter != nil {
+                                Button("Ver todas las ofertas") {
+                                    selectedFilter = nil
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .tint(Color(red: 0.13, green: 0.77, blue: 0.36))
+                            } else {
+                                Button("Reintentar") {
+                                    loadOffers()
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .tint(Color(red: 0.13, green: 0.77, blue: 0.36))
                             }
-                            .buttonStyle(.borderedProminent)
-                            .tint(Color(red: 0.13, green: 0.77, blue: 0.36))
                             Spacer()
                         }
                         .padding()
@@ -114,23 +149,37 @@ public struct OffersView: View {
             .navigationTitle("Ofertas del Día")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                if !supermarkets.isEmpty {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Menu {
-                            Button("Todos") {
-                                selectedFilter = nil
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Button(action: {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            selectedFilter = nil
+                        }) {
+                            if selectedFilter == nil {
+                                Label("Todos", systemImage: "checkmark")
+                            } else {
+                                Text("Todos")
                             }
-                            ForEach(supermarkets, id: \.self) { sm in
-                                Button(sm) {
-                                    selectedFilter = sm
+                        }
+
+                        Divider()
+
+                        ForEach(supermarkets, id: \.self) { sm in
+                            Button(action: {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                selectedFilter = sm
+                            }) {
+                                if selectedFilter == sm {
+                                    Label(sm, systemImage: "checkmark")
+                                } else {
+                                    Text(sm)
                                 }
                             }
-                        } label: {
-                            Image(systemName: "line.3.horizontal.decrease.circle")
-                                .font(.system(size: 16, weight: .bold))
-                                .foregroundColor(Color(red: 0.13, green: 0.77, blue: 0.36))
-                                .symbolVariant(selectedFilter == nil ? .none : .fill)
                         }
+                    } label: {
+                        Image(systemName: selectedFilter == nil ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundColor(Color(red: 0.13, green: 0.77, blue: 0.36))
                     }
                 }
             }

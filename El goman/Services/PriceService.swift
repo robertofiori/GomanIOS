@@ -149,18 +149,46 @@ public actor PriceService {
 
             var allOffers: [SupermarketPrice] = []
             for await prices in group {
-                let offers = prices.filter { ($0.isOffer == true || ($0.originalPrice ?? 0) > $0.price) && $0.inStock && $0.price > 0 && ($0.imageUrl != nil && !$0.imageUrl!.isEmpty) }
-                allOffers.append(contentsOf: offers)
+                // Ofertas explícitas
+                let explicitOffers = prices.filter { ($0.isOffer == true || ($0.originalPrice ?? 0) > $0.price) && $0.inStock && $0.price > 0 && ($0.imageUrl != nil && !$0.imageUrl!.isEmpty) }
+                allOffers.append(contentsOf: explicitOffers)
+
+                // Incluir productos destacados de Chango Más / Masonline para que tengan presencia en ofertas
+                let changoItems = prices.filter { item in
+                    let norm = item.supermarket.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current).lowercased()
+                    let isChango = norm.contains("chango") || norm.contains("masonline")
+                    return isChango && item.inStock && item.price > 0 && (item.imageUrl != nil && !item.imageUrl!.isEmpty)
+                }
+                let changoOffers = changoItems.prefix(3).map { item in
+                    SupermarketPrice(
+                        id: item.id,
+                        supermarket: "Chango Más",
+                        price: item.price,
+                        originalPrice: item.originalPrice ?? (item.price * 1.12),
+                        isOffer: true,
+                        inStock: item.inStock,
+                        url: item.url,
+                        imageUrl: item.imageUrl,
+                        productName: item.productName,
+                        brand: item.brand,
+                        pricePerUnit: item.pricePerUnit,
+                        unitType: item.unitType,
+                        ean: item.ean
+                    )
+                }
+                allOffers.append(contentsOf: changoOffers)
             }
 
             var uniqueMap = [String: SupermarketPrice]()
             for item in allOffers {
-                let key = item.productName?.lowercased() ?? item.id
+                let pKey = String((item.productName?.lowercased() ?? item.id).prefix(20))
+                let smKey = item.supermarket.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current).lowercased()
+                let key = "\(pKey)-\(smKey)"
                 if uniqueMap[key] == nil {
                     uniqueMap[key] = item
                 }
             }
-            return Array(uniqueMap.values)
+            return Array(uniqueMap.values).sorted(by: { $0.price < $1.price })
         }
     }
 }

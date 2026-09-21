@@ -24,6 +24,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		C308D69F30615ACA008F5511 /* El-goman-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "El-goman-Info.plist"; sourceTree = "<group>"; };
 		C3F6D72C2FF6EC0A009B05B0 /* El goman.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "El goman.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		C3F6D7392FF6EC0C009B05B0 /* El gomanTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "El gomanTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		C3F6D7432FF6EC0C009B05B0 /* El gomanUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "El gomanUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -75,6 +76,7 @@
 		C3F6D7232FF6EC0A009B05B0 = {
 			isa = PBXGroup;
 			children = (
+				C308D69F30615ACA008F5511 /* El-goman-Info.plist */,
 				C3F6D72E2FF6EC0A009B05B0 /* El goman */,
 				C3F6D73C2FF6EC0C009B05B0 /* El gomanTests */,
 				C3F6D7462FF6EC0C009B05B0 /* El gomanUITests */,
@@ -402,6 +404,7 @@
 				DEVELOPMENT_TEAM = A67K95GBTD;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "El-goman-Info.plist";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Se necesita acceso a la cámara para escanear códigos de barras de productos.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -435,6 +438,7 @@
 				DEVELOPMENT_TEAM = A67K95GBTD;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "El-goman-Info.plist";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Se necesita acceso a la cámara para escanear códigos de barras de productos.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

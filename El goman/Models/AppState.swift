@@ -73,6 +73,18 @@ public final class AppState {
         }
     }
 
+    public func addToCart(_ price: SupermarketPrice, quantity: Int = 1) {
+        addToCart(
+            productName: price.productName ?? "Producto",
+            brand: price.brand,
+            imageUrl: price.imageUrl,
+            selectedPrice: price,
+            allPrices: [price],
+            quantity: quantity,
+            ean: price.ean
+        )
+    }
+
     public func updateQuantity(for item: CartItem, delta: Int) {
         guard let index = cartItems.firstIndex(where: { $0.id == item.id }) else { return }
         let newQuantity = cartItems[index].quantity + delta

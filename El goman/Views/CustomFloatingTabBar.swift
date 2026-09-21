@@ -70,7 +70,8 @@ public struct CustomFloatingTabBar: View {
                         }
 
                         Text("PERFIL")
-                            .font(.system(size: 10, weight: .bold))
+                            .font(.montserrat(.black, size: 9))
+                            .tracking(0.5)
                             .foregroundColor(selectedTab == .profile ? Color(red: 0.08, green: 0.12, blue: 0.18) : Color(red: 0.58, green: 0.64, blue: 0.72))
                     }
                     .frame(maxWidth: .infinity)
@@ -85,7 +86,8 @@ public struct CustomFloatingTabBar: View {
                     VStack(spacing: 4) {
                         // Badge "MUY PRONTO"
                         Text("MUY PRONTO")
-                            .font(.system(size: 7.5, weight: .heavy))
+                            .font(.montserrat(.black, size: 7))
+                            .tracking(0.5)
                             .foregroundColor(.white)
                             .padding(.horizontal, 5)
                             .padding(.vertical, 2)
@@ -98,7 +100,8 @@ public struct CustomFloatingTabBar: View {
                             .foregroundColor(selectedTab == .scanner ? Color(red: 0.13, green: 0.77, blue: 0.36) : Color(red: 0.58, green: 0.64, blue: 0.72))
 
                         Text("ESCANEAR")
-                            .font(.system(size: 10, weight: .bold))
+                            .font(.montserrat(.black, size: 9))
+                            .tracking(0.5)
                             .foregroundColor(selectedTab == .scanner ? Color(red: 0.08, green: 0.12, blue: 0.18) : Color(red: 0.58, green: 0.64, blue: 0.72))
                     }
                     .frame(maxWidth: .infinity)
@@ -109,7 +112,7 @@ public struct CustomFloatingTabBar: View {
             .frame(height: 74)
 
             // Botón central flotante BUSCAR
-            VStack(spacing: 3) {
+            VStack(spacing: 4) {
                 Button(action: {
                     UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                     selectedTab = .home
@@ -129,7 +132,8 @@ public struct CustomFloatingTabBar: View {
                 .buttonStyle(.plain)
 
                 Text("BUSCAR")
-                    .font(.system(size: 10, weight: .bold))
+                    .font(.montserrat(.black, size: 9))
+                    .tracking(0.8)
                     .foregroundColor(selectedTab == .home ? Color(red: 0.08, green: 0.12, blue: 0.18) : Color(red: 0.58, green: 0.64, blue: 0.72))
             }
             .offset(y: -22) // Eleva el botón sobre la barra
@@ -158,18 +162,19 @@ public struct CustomFloatingTabBar: View {
 
                     if badgeCount > 0 {
                         Text("\(badgeCount)")
-                            .font(.system(size: 9, weight: .bold))
+                            .font(.montserrat(.bold, size: 10))
                             .foregroundColor(.white)
                             .padding(.horizontal, 5)
-                            .padding(.vertical, 1.5)
-                            .background(Color(red: 0.13, green: 0.77, blue: 0.36)) // Verde
+                            .padding(.vertical, 2)
+                            .background(Color(red: 0.13, green: 0.77, blue: 0.36))
                             .clipShape(Capsule())
-                            .offset(x: 14, y: -6)
+                            .offset(x: 14, y: -4)
                     }
                 }
 
                 Text(title)
-                    .font(.system(size: 10, weight: .bold))
+                    .font(.montserrat(.black, size: 9))
+                    .tracking(0.5)
                     .foregroundColor(selectedTab == tab ? Color(red: 0.08, green: 0.12, blue: 0.18) : Color(red: 0.58, green: 0.64, blue: 0.72))
             }
             .frame(maxWidth: .infinity)

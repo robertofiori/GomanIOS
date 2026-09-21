@@ -60,35 +60,44 @@ public struct HomeView: View {
 
     // MARK: - Tarjeta Blanca Superior (Hero Card)
     private var heroTopCard: some View {
-        VStack(spacing: 18) {
-            // Fila de Encabezado: Logo Mango + Tipografía
-            HStack(alignment: .center, spacing: 14) {
-                // Logo Mango con carrito
-                MangoLogoView(size: 92)
+        VStack(spacing: 16) {
+            // Fila de Encabezado: Logo Mango + Tipografía exacta Montserrat
+            VStack(alignment: .center, spacing: 0) {
+                HStack(alignment: .center, spacing: 10) {
+                    // Logo Mango SVG original
+                    MangoLogoView(width: 125)
+                        .scaleEffect(1.08)
 
-                // Texto "¡Ahorra en tu compra realmente!"
-                VStack(alignment: .leading, spacing: -2) {
-                    Text("¡Ahorra")
-                        .font(.system(size: 34, weight: .black, design: .rounded))
-                        .foregroundColor(Color(red: 0.07, green: 0.10, blue: 0.17))
+                    // Textos "¡Ahorra en tu compra" con Montserrat Black
+                    VStack(alignment: .leading, spacing: -6) {
+                        Text("¡Ahorra")
+                            .font(.montserrat(.black, size: 42))
+                            .foregroundColor(Color(red: 0.06, green: 0.09, blue: 0.16)) // slate-950
 
-                    Text("en tu")
-                        .font(.system(size: 34, weight: .black, design: .rounded))
-                        .foregroundColor(Color(red: 0.07, green: 0.10, blue: 0.17))
+                        Text("en tu")
+                            .font(.montserrat(.black, size: 42))
+                            .foregroundColor(Color(red: 0.06, green: 0.09, blue: 0.16))
 
-                    Text("compra")
-                        .font(.system(size: 34, weight: .black, design: .rounded))
-                        .foregroundColor(Color(red: 0.07, green: 0.10, blue: 0.17))
-
-                    Text("realmente!")
-                        .font(.system(size: 34, weight: .black, design: .rounded))
-                        .italic()
-                        .foregroundColor(Color(red: 0.13, green: 0.77, blue: 0.36)) // Verde vibrante
+                        Text("compra")
+                            .font(.montserrat(.black, size: 42))
+                            .foregroundColor(Color(red: 0.06, green: 0.09, blue: 0.16))
+                    }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+
+                // "realmente!" con Montserrat Black Italic y verde #22c55e
+                HStack(spacing: 0) {
+                    Text("realmente")
+                        .font(.montserrat(.blackItalic, size: 54))
+                        .foregroundColor(Color(red: 0.13, green: 0.77, blue: 0.37)) // primary-green
+
+                    Text("!")
+                        .font(.montserrat(.black, size: 54))
+                        .foregroundColor(Color(red: 0.06, green: 0.09, blue: 0.16))
+                }
+                .padding(.top, -2)
+                .padding(.bottom, 6)
             }
             .padding(.top, 4)
-            .padding(.horizontal, 4)
 
             // Input de Búsqueda con Botón "Ir"
             HStack(spacing: 10) {
@@ -99,7 +108,7 @@ public struct HomeView: View {
 
                 TextField("Ej. Aceite Natura, Leche..", text: $searchText)
                     .focused($isSearchFocused)
-                    .font(.system(size: 15, weight: .medium))
+                    .font(.montserrat(.semiBold, size: 15))
                     .foregroundColor(Color(red: 0.08, green: 0.12, blue: 0.18))
                     .submitLabel(.search)
                     .onSubmit {
@@ -124,16 +133,16 @@ public struct HomeView: View {
                     performSearch(query: searchText)
                 }) {
                     Text("Ir")
-                        .font(.system(size: 16, weight: .bold))
+                        .font(.montserrat(.bold, size: 16))
                         .foregroundColor(.white)
-                        .frame(width: 50, height: 40)
+                        .frame(width: 52, height: 42)
                         .background(Color(red: 0.44, green: 0.84, blue: 0.56)) // Verde claro suave
                         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 }
                 .buttonStyle(.plain)
                 .padding(.trailing, 6)
             }
-            .frame(height: 52)
+            .frame(height: 54)
             .background(Color(red: 0.93, green: 0.95, blue: 0.98)) // Gris azulado suave
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
 
@@ -154,11 +163,12 @@ public struct HomeView: View {
                 // Textos de Ubicación
                 VStack(alignment: .leading, spacing: 2) {
                     Text("UBICACIÓN")
-                        .font(.system(size: 10, weight: .bold))
+                        .font(.montserrat(.extraBold, size: 9))
+                        .tracking(1.0)
                         .foregroundColor(Color(red: 0.58, green: 0.64, blue: 0.72))
 
                     Text(appState.selectedLocation.city)
-                        .font(.system(size: 15, weight: .bold))
+                        .font(.montserrat(.bold, size: 15))
                         .foregroundColor(Color(red: 0.08, green: 0.12, blue: 0.18))
                 }
 
@@ -169,7 +179,8 @@ public struct HomeView: View {
                     showLocationPicker = true
                 }) {
                     Text("CAMBIAR")
-                        .font(.system(size: 11, weight: .heavy))
+                        .font(.montserrat(.black, size: 11))
+                        .tracking(0.5)
                         .foregroundColor(Color(red: 0.13, green: 0.77, blue: 0.36))
                         .padding(.horizontal, 14)
                         .padding(.vertical, 8)
@@ -215,7 +226,7 @@ public struct HomeView: View {
                 }
 
                 Text("Mi Lista")
-                    .font(.system(size: 22, weight: .heavy, design: .rounded))
+                    .font(.montserrat(.black, size: 22))
                     .foregroundColor(Color(red: 0.08, green: 0.12, blue: 0.18))
 
                 Spacer()
@@ -224,7 +235,8 @@ public struct HomeView: View {
                     onNavigateToCart()
                 }) {
                     Text("VER TODO")
-                        .font(.system(size: 11, weight: .heavy))
+                        .font(.montserrat(.black, size: 11))
+                        .tracking(0.5)
                         .foregroundColor(Color(red: 0.28, green: 0.34, blue: 0.42))
                         .padding(.horizontal, 14)
                         .padding(.vertical, 8)
@@ -292,12 +304,12 @@ public struct HomeView: View {
             // Nombre y Precio
             VStack(alignment: .leading, spacing: 3) {
                 Text("Búsqueda: \(item.productName.lowercased())")
-                    .font(.system(size: 13, weight: .bold))
+                    .font(.montserrat(.bold, size: 14))
                     .foregroundColor(Color(red: 0.08, green: 0.12, blue: 0.18))
                     .lineLimit(1)
 
                 Text(formatPrice(item.selectedPrice.price * Double(item.quantity)))
-                    .font(.system(size: 16, weight: .black, design: .rounded))
+                    .font(.montserrat(.extraBold, size: 16))
                     .foregroundColor(Color(red: 0.13, green: 0.77, blue: 0.36))
             }
 
@@ -310,13 +322,13 @@ public struct HomeView: View {
                     appState.updateQuantity(for: item, delta: -1)
                 }) {
                     Text("—")
-                        .font(.system(size: 13, weight: .bold))
+                        .font(.montserrat(.bold, size: 13))
                         .foregroundColor(Color(red: 0.58, green: 0.64, blue: 0.72))
                 }
                 .buttonStyle(.plain)
 
                 Text("\(item.quantity)")
-                    .font(.system(size: 15, weight: .bold))
+                    .font(.montserrat(.bold, size: 15))
                     .foregroundColor(Color(red: 0.08, green: 0.12, blue: 0.18))
                     .frame(minWidth: 16)
 
@@ -325,7 +337,7 @@ public struct HomeView: View {
                     appState.updateQuantity(for: item, delta: 1)
                 }) {
                     Text("+")
-                        .font(.system(size: 17, weight: .bold))
+                        .font(.montserrat(.bold, size: 17))
                         .foregroundColor(Color(red: 0.13, green: 0.77, blue: 0.36))
                 }
                 .buttonStyle(.plain)
@@ -353,11 +365,11 @@ public struct HomeView: View {
 
             VStack(alignment: .leading, spacing: 3) {
                 Text("Búsqueda: arroz parboil")
-                    .font(.system(size: 13, weight: .bold))
+                    .font(.montserrat(.bold, size: 13))
                     .foregroundColor(Color(red: 0.08, green: 0.12, blue: 0.18))
 
                 Text("$ 1.990")
-                    .font(.system(size: 16, weight: .black, design: .rounded))
+                    .font(.montserrat(.extraBold, size: 16))
                     .foregroundColor(Color(red: 0.13, green: 0.77, blue: 0.36))
             }
 
@@ -368,7 +380,7 @@ public struct HomeView: View {
                 performSearch(query: "arroz")
             }) {
                 Text("+ Agregar")
-                    .font(.system(size: 12, weight: .bold))
+                    .font(.montserrat(.bold, size: 12))
                     .foregroundColor(Color(red: 0.13, green: 0.77, blue: 0.36))
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
@@ -385,7 +397,7 @@ public struct HomeView: View {
         VStack(spacing: 12) {
             HStack {
                 Text("Resultados para \"\(searchText)\"")
-                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .font(.montserrat(.bold, size: 18))
                     .foregroundColor(Color(red: 0.08, green: 0.12, blue: 0.18))
 
                 Spacer()
@@ -395,7 +407,7 @@ public struct HomeView: View {
                     searchText = ""
                     errorMessage = nil
                 }
-                .font(.caption)
+                .font(.montserrat(.semiBold, size: 13))
                 .foregroundColor(.secondary)
             }
             .padding(.horizontal, 20)
@@ -403,44 +415,31 @@ public struct HomeView: View {
             if isLoading {
                 VStack(spacing: 12) {
                     ProgressView()
-                        .scaleEffect(1.2)
-                    Text("Buscando mejores precios...")
-                        .font(.caption)
+                    Text("Comparando precios en Bahía Blanca...")
+                        .font(.montserrat(.regular, size: 14))
                         .foregroundColor(.secondary)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(32)
-                .background(Color.white.cornerRadius(24))
+                .background(RoundedRectangle(cornerRadius: 24).fill(Color.white))
                 .padding(.horizontal, 16)
             } else if let error = errorMessage {
-                VStack(spacing: 8) {
+                VStack(spacing: 12) {
                     Image(systemName: "exclamationmark.triangle")
+                        .font(.largeTitle)
                         .foregroundColor(.orange)
                     Text(error)
-                        .font(.caption)
+                        .font(.montserrat(.regular, size: 14))
+                        .multilineTextAlignment(.center)
                         .foregroundColor(.secondary)
                 }
-                .frame(maxWidth: .infinity)
                 .padding(24)
-                .background(Color.white.cornerRadius(24))
+                .background(RoundedRectangle(cornerRadius: 24).fill(Color.white))
                 .padding(.horizontal, 16)
             } else {
-                VStack(spacing: 10) {
-                    ForEach(searchResults) { price in
-                        ProductSearchResultRow(price: price) {
-                            appState.addToCart(
-                                productName: price.productName ?? searchText,
-                                brand: price.brand,
-                                imageUrl: price.imageUrl,
-                                selectedPrice: price,
-                                allPrices: searchResults,
-                                quantity: 1,
-                                ean: price.ean
-                            )
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(Color.white.cornerRadius(18))
+                ForEach(searchResults) { price in
+                    ProductSearchResultRow(price: price) {
+                        appState.addToCart(price)
                     }
                 }
                 .padding(.horizontal, 16)
@@ -448,63 +447,61 @@ public struct HomeView: View {
         }
     }
 
-    // MARK: - Location Picker Sheet
+    // MARK: - Sheet de Selección de Sucursal / Ubicación
     private var locationPickerSheet: some View {
         NavigationStack {
-            List(LocationData.availableLocations) { loc in
-                Button(action: {
-                    appState.selectedLocation = loc
-                    showLocationPicker = false
-                    if !searchText.isEmpty {
-                        performSearch(query: searchText)
-                    }
-                }) {
+            List {
+                Section("Ciudad") {
                     HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(loc.city)
-                                .font(.body)
-                                .fontWeight(.semibold)
-                                .foregroundColor(.primary)
-                            Text("\(loc.province) • CP \(loc.zipCode)")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
+                        Image(systemName: "building.2.fill")
+                            .foregroundColor(Color(red: 0.13, green: 0.77, blue: 0.36))
+                        Text(appState.selectedLocation.city)
+                            .font(.montserrat(.bold, size: 16))
                         Spacer()
-                        if appState.selectedLocation.id == loc.id {
-                            Image(systemName: "checkmark")
-                                .foregroundColor(.green)
-                                .fontWeight(.bold)
+                        Image(systemName: "checkmark")
+                            .foregroundColor(Color(red: 0.13, green: 0.77, blue: 0.36))
+                    }
+                }
+
+                Section("Supermercados activos") {
+                    ForEach(["Carrefour", "Vea", "ChangoMás", "Cooperativa Obrera"], id: \.self) { superm in
+                        HStack {
+                            SupermarketBadge(superm, style: .compact)
+                            Spacer()
+                            Text("Bahía Blanca")
+                                .font(.montserrat(.regular, size: 13))
+                                .foregroundColor(.secondary)
                         }
                     }
                 }
             }
-            .navigationTitle("Seleccionar Ciudad")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationTitle("Ubicación")
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Cerrar") { showLocationPicker = false }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Listo") {
+                        showLocationPicker = false
+                    }
                 }
             }
         }
+        .presentationDetents([.medium])
     }
 
+    // MARK: - Lógica de Búsqueda
     private func performSearch(query: String) {
-        let clean = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !clean.isEmpty else { return }
-
-        appState.addRecentSearch(clean)
+        guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         isLoading = true
         errorMessage = nil
 
         Task {
             do {
-                let prices = try await PriceService.shared.searchPrices(
-                    query: clean,
-                    location: appState.selectedLocation
-                )
+                let results = try await PriceService.shared.searchPrices(query: query, location: appState.selectedLocation)
                 await MainActor.run {
-                    self.searchResults = prices
+                    self.searchResults = results
                     self.isLoading = false
+                    if results.isEmpty {
+                        self.errorMessage = "No se encontraron productos para \"\(query)\""
+                    }
                 }
             } catch {
                 await MainActor.run {
@@ -518,7 +515,7 @@ public struct HomeView: View {
     private func formatPrice(_ value: Double) -> String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
-        formatter.currencySymbol = "$"
+        formatter.locale = Locale(identifier: "es_AR")
         formatter.maximumFractionDigits = 0
         return formatter.string(from: NSNumber(value: value)) ?? "$\(Int(value))"
     }

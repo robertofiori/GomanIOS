@@ -228,14 +228,14 @@ public struct LocationData: Identifiable, Codable, Hashable, Sendable {
         self.zipCode = zipCode
     }
 
-    public static let bahiaBlanca = LocationData(
+    public nonisolated static let bahiaBlanca = LocationData(
         id: "bahiablanca",
         city: "Bahía Blanca",
         province: "Buenos Aires",
         zipCode: "8000"
     )
 
-    public static let availableLocations: [LocationData] = [
+    public nonisolated static let availableLocations: [LocationData] = [
         .bahiaBlanca,
         LocationData(id: "caba", city: "CABA", province: "Buenos Aires", zipCode: "1000"),
         LocationData(id: "laplata", city: "La Plata", province: "Buenos Aires", zipCode: "1900"),

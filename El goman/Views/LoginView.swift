@@ -11,6 +11,9 @@ public struct LoginView: View {
     @State private var authService = AuthService.shared
     @State private var isSigningIn = false
     @State private var errorMessage: String? = nil
+    @State private var showCustomLoginSheet = false
+    @State private var customEmail = ""
+    @State private var customName = ""
 
     let onLoginSuccess: () -> Void
 
@@ -51,7 +54,7 @@ public struct LoginView: View {
                     receiptTicketCard
 
                     // 3. Texto descriptivo
-                    Text("Inicia sesión con tu cuenta de Google para guardar tus listas, métodos de pago y recibir alertas.")
+                    Text("Inicia sesión con tu cuenta de Google o correo para guardar tus listas, métodos de pago y recibir alertas.")
                         .font(.montserrat(.semiBold, size: 14))
                         .foregroundColor(Color(red: 0.39, green: 0.45, blue: 0.55)) // slate-500
                         .multilineTextAlignment(.center)
@@ -81,7 +84,6 @@ public struct LoginView: View {
                                 ProgressView()
                                     .tint(Color(red: 0.13, green: 0.77, blue: 0.36))
                             } else {
-                                // Icono Google / Login
                                 ZStack {
                                     Circle()
                                         .fill(Color(red: 0.90, green: 0.98, blue: 0.93))
@@ -111,10 +113,104 @@ public struct LoginView: View {
                     .padding(.horizontal, 24)
                     .disabled(isSigningIn)
 
+                    // 5. Botón secundario para ingresar con otra cuenta / correo
+                    Button(action: {
+                        showCustomLoginSheet = true
+                    }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "person.crop.circle.badge.plus")
+                                .font(.system(size: 14, weight: .bold))
+                            Text("Entrar con otra cuenta o correo")
+                                .font(.montserrat(.bold, size: 13))
+                        }
+                        .foregroundColor(Color(red: 0.45, green: 0.52, blue: 0.62))
+                    }
+                    .padding(.top, 4)
+
                     Spacer()
                         .frame(height: 40)
                 }
             }
+        }
+        .sheet(isPresented: $showCustomLoginSheet) {
+            NavigationStack {
+                VStack(spacing: 20) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Iniciar sesión")
+                            .font(.montserrat(.black, size: 22))
+                            .foregroundColor(Color(red: 0.08, green: 0.12, blue: 0.18))
+
+                        Text("Ingresa los datos del usuario con el que deseas ingresar")
+                            .font(.montserrat(.regular, size: 14))
+                            .foregroundColor(Color(red: 0.58, green: 0.64, blue: 0.72))
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.top, 20)
+
+                    VStack(spacing: 14) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("NOMBRE COMPLETO")
+                                .font(.montserrat(.black, size: 10))
+                                .foregroundColor(Color(red: 0.58, green: 0.64, blue: 0.72))
+                            TextField("Ej. María García", text: $customName)
+                                .font(.montserrat(.semiBold, size: 15))
+                                .padding(14)
+                                .background(Color(red: 0.95, green: 0.96, blue: 0.98))
+                                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        }
+
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("CORREO ELECTRÓNICO")
+                                .font(.montserrat(.black, size: 10))
+                                .foregroundColor(Color(red: 0.58, green: 0.64, blue: 0.72))
+                            TextField("ejemplo@gmail.com", text: $customEmail)
+                                .font(.montserrat(.semiBold, size: 15))
+                                .keyboardType(.emailAddress)
+                                .autocapitalization(.none)
+                                .padding(14)
+                                .background(Color(red: 0.95, green: 0.96, blue: 0.98))
+                                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        }
+                    }
+
+                    Spacer()
+
+                    Button(action: {
+                        let emailToUse = customEmail.trimmingCharacters(in: .whitespacesAndNewlines)
+                        guard !emailToUse.isEmpty else { return }
+                        Task {
+                            await authService.signInCustom(
+                                email: emailToUse,
+                                displayName: customName.trimmingCharacters(in: .whitespacesAndNewlines)
+                            )
+                            await MainActor.run {
+                                showCustomLoginSheet = false
+                                onLoginSuccess()
+                            }
+                        }
+                    }) {
+                        Text("Continuar")
+                            .font(.montserrat(.black, size: 15))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 52)
+                            .background(Color(red: 0.13, green: 0.77, blue: 0.36))
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    }
+                    .disabled(customEmail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+                .padding(20)
+                .navigationTitle("Cambiar Usuario")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancelar") {
+                            showCustomLoginSheet = false
+                        }
+                    }
+                }
+            }
+            .presentationDetents([.medium])
         }
     }
 
@@ -265,10 +361,8 @@ private struct TicketScallopEdge: Shape {
         path.move(to: CGPoint(x: 0, y: 0))
         for i in 0..<count {
             let startX = CGFloat(i) * toothWidth
-            let midX = startX + toothWidth / 2
+            let midX = startX + (toothWidth / 2)
             let endX = startX + toothWidth
-
-            path.addLine(to: CGPoint(x: startX, y: 0))
             path.addLine(to: CGPoint(x: midX, y: toothHeight))
             path.addLine(to: CGPoint(x: endX, y: 0))
         }

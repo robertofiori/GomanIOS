@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import CoreText
 
 public extension Font {
     enum MontserratWeight {
@@ -33,6 +34,35 @@ public extension Font {
     }
 
     static func montserrat(_ weight: MontserratWeight = .regular, size: CGFloat) -> Font {
-        Font.custom(weight.fontName, size: size)
+        FontRegistrar.registerFontsIfNeeded()
+        return Font.custom(weight.fontName, size: size)
+    }
+}
+
+public enum FontRegistrar {
+    private static var hasRegistered = false
+
+    public static func registerFontsIfNeeded() {
+        guard !hasRegistered else { return }
+        hasRegistered = true
+
+        let fontNames = [
+            "Montserrat-Regular",
+            "Montserrat-SemiBold",
+            "Montserrat-Bold",
+            "Montserrat-BoldItalic",
+            "Montserrat-ExtraBold",
+            "Montserrat-ExtraBoldItalic",
+            "Montserrat-Black",
+            "Montserrat-BlackItalic"
+        ]
+
+        for fontName in fontNames {
+            if let url = Bundle.main.url(forResource: fontName, withExtension: "ttf") {
+                CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
+            } else if let url = Bundle.main.url(forResource: fontName, withExtension: "ttf", subdirectory: "Fonts") {
+                CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
+            }
+        }
     }
 }

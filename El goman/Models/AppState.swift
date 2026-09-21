@@ -10,6 +10,12 @@ import Observation
 
 @Observable
 public final class AppState {
+    public var isDarkMode: Bool = false {
+        didSet {
+            UserDefaults.standard.set(isDarkMode, forKey: "is_dark_mode_preference")
+        }
+    }
+
     public var cartItems: [CartItem] = [] {
         didSet {
             saveCart()
@@ -40,7 +46,12 @@ public final class AppState {
     private let searchesKey = "saved_searches_v1"
 
     public init() {
+        self.isDarkMode = UserDefaults.standard.bool(forKey: "is_dark_mode_preference")
         loadData()
+    }
+
+    public func toggleTheme() {
+        isDarkMode.toggle()
     }
 
     // MARK: - Cart Actions

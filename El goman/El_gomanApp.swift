@@ -9,6 +9,10 @@ import SwiftUI
 
 @main
 struct El_gomanApp: App {
+    init() {
+        FontRegistrar.registerFontsIfNeeded()
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView()

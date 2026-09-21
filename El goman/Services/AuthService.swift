@@ -74,14 +74,16 @@ public final class AuthService {
     public var isLoading: Bool = false
     public var errorMessage: String? = nil
 
-    private let sessionKey = "elmango_user_session_v1"
+    private let sessionKey = "elmango_user_session_v2"
+    private let hasUserEverLoggedOutKey = "elmango_user_has_logged_out"
     private let firebaseApiKey = "AIzaSyD4Irym4YDnQoiVIZs5EcoXXE07CQ5_toY"
     private let projectId = "elchango-81e77"
 
     public init() {
         loadSession()
-        if currentUser == nil {
-            // Inicializar sesión por defecto de Roberto Fiori
+        let hasLoggedOut = UserDefaults.standard.bool(forKey: hasUserEverLoggedOutKey)
+        if currentUser == nil && !hasLoggedOut {
+            // Inicializar sesión por defecto de Roberto Fiori solo en primera apertura
             currentUser = .robertoDefault
         }
     }
@@ -109,15 +111,14 @@ public final class AuthService {
             self.errorMessage = nil
         }
 
-        // Simular o conectar autenticación de Google con Firebase
         try? await Task.sleep(nanoseconds: 600_000_000)
 
         await MainActor.run {
+            UserDefaults.standard.set(false, forKey: hasUserEverLoggedOutKey)
             self.currentUser = .robertoDefault
             self.isLoading = false
         }
 
-        // Intentar sincronizar datos desde Firestore si hay token
         await fetchFirestoreUserData()
     }
 
@@ -125,6 +126,7 @@ public final class AuthService {
         await MainActor.run {
             self.isLoading = true
             self.errorMessage = nil
+            UserDefaults.standard.set(false, forKey: hasUserEverLoggedOutKey)
             self.currentUser = UserSession(
                 uid: UUID().uuidString,
                 displayName: displayName.isEmpty ? "Usuario ElMango" : displayName,
@@ -138,6 +140,8 @@ public final class AuthService {
     }
 
     public func signOut() {
+        UserDefaults.standard.set(true, forKey: hasUserEverLoggedOutKey)
+        UserDefaults.standard.removeObject(forKey: sessionKey)
         self.currentUser = nil
     }
 
@@ -172,60 +176,56 @@ public final class AuthService {
         }
     }
 
-    public func updateLocation(_ location: LocationData) {
-        guard var user = currentUser else { return }
-        user.location = location
-        self.currentUser = user
-        Task {
-            await syncUserToFirestore()
-        }
-    }
-
-    // MARK: - Firestore Database Synchronization
-    public func fetchFirestoreUserData() async {
-        guard let user = currentUser, let token = user.idToken else { return }
-        let urlString = "https://firestore.googleapis.com/v1/projects/\(projectId)/databases/(default)/documents/users/\(user.uid)"
-        guard let url = URL(string: urlString) else { return }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-
-        do {
-            let (data, response) = try await URLSession.shared.data(for: request)
-            if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
-                // Parsear datos de Firestore
-                print("Firestore user data synchronized successfully")
-            }
-        } catch {
-            print("Firestore fetch error: \(error.localizedDescription)")
-        }
-    }
-
+    // MARK: - Firestore Sync
     public func syncUserToFirestore() async {
-        guard let user = currentUser, let token = user.idToken else { return }
-        let urlString = "https://firestore.googleapis.com/v1/projects/\(projectId)/databases/(default)/documents/users/\(user.uid)?updateMask.fieldPaths=paymentMethods&updateMask.fieldPaths=notifications"
-        guard let url = URL(string: urlString) else { return }
+        guard let user = currentUser else { return }
+        let docUrl = "https://firestore.googleapis.com/v1/projects/\(projectId)/databases/(default)/documents/users/\(user.uid)?key=\(firebaseApiKey)"
+
+        guard let url = URL(string: docUrl) else { return }
 
         var request = URLRequest(url: url)
         request.httpMethod = "PATCH"
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        let payload: [String: Any] = [
-            "fields": [
-                "notifications": ["booleanValue": user.notificationsEnabled],
-                "paymentMethods": [
-                    "arrayValue": [
-                        "values": user.paymentMethods.map { ["stringValue": $0] }
-                    ]
+        let fields: [String: Any] = [
+            "displayName": ["stringValue": user.displayName],
+            "email": ["stringValue": user.email],
+            "notificationsEnabled": ["booleanValue": user.notificationsEnabled],
+            "paymentMethods": [
+                "arrayValue": [
+                    "values": user.paymentMethods.map { ["stringValue": $0] }
                 ]
-            ]
+            ],
+            "city": ["stringValue": user.location.city],
+            "zipCode": ["stringValue": user.location.zipCode]
         ]
 
-        if let body = try? JSONSerialization.data(withJSONObject: payload) {
-            request.httpBody = body
-            _ = try? await URLSession.shared.data(for: request)
+        let body: [String: Any] = ["fields": fields]
+
+        do {
+            request.httpBody = try JSONSerialization.data(withJSONObject: body)
+            _ = try await URLSession.shared.data(for: request)
+        } catch {
+            print("Error syncing to Firestore: \(error)")
+        }
+    }
+
+    public func fetchFirestoreUserData() async {
+        guard let user = currentUser else { return }
+        let docUrl = "https://firestore.googleapis.com/v1/projects/\(projectId)/databases/(default)/documents/users/\(user.uid)?key=\(firebaseApiKey)"
+
+        guard let url = URL(string: docUrl) else { return }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+
+        do {
+            let (_, response) = try await URLSession.shared.data(for: request)
+            if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
+                // Parsear datos de Firestore
+            }
+        } catch {
+            print("Error fetching Firestore: \(error)")
         }
     }
 }

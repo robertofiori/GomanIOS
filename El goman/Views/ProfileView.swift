@@ -300,6 +300,45 @@ public struct ProfileView: View {
             Divider()
                 .padding(.horizontal, 18)
 
+            // Modo Oscuro / Claro
+            HStack(spacing: 14) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(Color(red: 0.93, green: 0.94, blue: 0.98))
+                        .frame(width: 44, height: 44)
+
+                    Image(systemName: appState.isDarkMode ? "moon.fill" : "sun.max.fill")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundColor(appState.isDarkMode ? Color(red: 0.49, green: 0.23, blue: 0.73) : Color(red: 0.95, green: 0.61, blue: 0.07))
+                }
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Modo Oscuro")
+                        .font(.montserrat(.bold, size: 15))
+                        .foregroundColor(Color(red: 0.08, green: 0.12, blue: 0.18))
+
+                    Text(appState.isDarkMode ? "Tema oscuro activado" : "Tema claro activado")
+                        .font(.montserrat(.semiBold, size: 11))
+                        .foregroundColor(Color(red: 0.58, green: 0.64, blue: 0.72))
+                }
+
+                Spacer()
+
+                Toggle("", isOn: Binding(
+                    get: { appState.isDarkMode },
+                    set: { _ in
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        appState.toggleTheme()
+                    }
+                ))
+                .tint(Color(red: 0.13, green: 0.77, blue: 0.36))
+                .labelsHidden()
+            }
+            .padding(18)
+
+            Divider()
+                .padding(.horizontal, 18)
+
             // Cerrar Sesión
             Button(action: {
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
@@ -316,9 +355,15 @@ public struct ProfileView: View {
                             .foregroundColor(Color(red: 0.94, green: 0.27, blue: 0.27))
                     }
 
-                    Text("Cerrar Sesión")
-                        .font(.montserrat(.bold, size: 15))
-                        .foregroundColor(Color(red: 0.94, green: 0.27, blue: 0.27))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Cerrar Sesión")
+                            .font(.montserrat(.bold, size: 15))
+                            .foregroundColor(Color(red: 0.94, green: 0.27, blue: 0.27))
+
+                        Text("Cambiar de usuario o salir")
+                            .font(.montserrat(.regular, size: 11))
+                            .foregroundColor(Color(red: 0.58, green: 0.64, blue: 0.72))
+                    }
 
                     Spacer()
                 }

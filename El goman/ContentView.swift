@@ -63,6 +63,7 @@ public struct ContentView: View {
                 .environment(appState)
             }
         }
+        .preferredColorScheme(appState.isDarkMode ? .dark : .light)
     }
 }
 

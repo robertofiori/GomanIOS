@@ -28,68 +28,91 @@ public struct OffersView: View {
 
     public var body: some View {
         NavigationStack {
-            Group {
-                if isLoading {
-                    VStack(spacing: 16) {
-                        ProgressView()
-                            .scaleEffect(1.2)
-                        Text("Buscando las mejores ofertas en \(appState.selectedLocation.city)...")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if offers.isEmpty {
-                    VStack(spacing: 12) {
-                        Spacer()
-                        Image(systemName: "tag.slash")
-                            .font(.system(size: 48))
-                            .foregroundColor(.secondary)
-                        Text("No se encontraron ofertas disponibles en este momento.")
-                            .font(.headline)
-                            .foregroundColor(.primary)
-                        Text("Probá cambiando la ubicación o intentá más tarde.")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                        Button("Reintentar") {
-                            loadOffers()
+            ZStack {
+                // Fondo consistente con toda la app
+                Color(red: 0.96, green: 0.97, blue: 0.98)
+                    .ignoresSafeArea()
+
+                Group {
+                    if isLoading {
+                        VStack(spacing: 16) {
+                            ProgressView()
+                                .scaleEffect(1.2)
+                            Text("Buscando las mejores ofertas en \(appState.selectedLocation.city)...")
+                                .font(.montserrat(.semiBold, size: 14))
+                                .foregroundColor(Color(red: 0.45, green: 0.52, blue: 0.62))
                         }
-                        .buttonStyle(.bordered)
-                        Spacer()
-                    }
-                    .padding()
-                } else {
-                    List {
-                        Section {
-                            ForEach(filteredOffers) { offer in
-                                ProductSearchResultRow(
-                                    price: offer,
-                                    isBestPrice: false,
-                                    bestSavingsVsHighest: nil
-                                ) { qty, isOptional in
-                                    appState.addToCart(
-                                        productName: offer.productName ?? "Oferta",
-                                        brand: offer.brand,
-                                        imageUrl: offer.imageUrl,
-                                        selectedPrice: offer,
-                                        allPrices: [offer],
-                                        quantity: qty,
-                                        isOptional: isOptional,
-                                        ean: offer.ean
-                                    )
-                                }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else if offers.isEmpty {
+                        VStack(spacing: 14) {
+                            Spacer()
+                            Image(systemName: "tag.slash")
+                                .font(.system(size: 48))
+                                .foregroundColor(Color(red: 0.58, green: 0.64, blue: 0.72))
+                            Text("No se encontraron ofertas disponibles en este momento.")
+                                .font(.montserrat(.bold, size: 16))
+                                .foregroundColor(Color(red: 0.08, green: 0.12, blue: 0.18))
+                            Text("Probá cambiando la ubicación o intentá más tarde.")
+                                .font(.montserrat(.regular, size: 14))
+                                .foregroundColor(Color(red: 0.58, green: 0.64, blue: 0.72))
+                            Button("Reintentar") {
+                                loadOffers()
                             }
-                        } header: {
-                            Text("Promociones destacadas en \(appState.selectedLocation.city)")
+                            .buttonStyle(.borderedProminent)
+                            .tint(Color(red: 0.13, green: 0.77, blue: 0.36))
+                            Spacer()
                         }
-                    }
-                    .listStyle(.insetGrouped)
-                    .refreshable {
-                        await reloadOffers()
+                        .padding()
+                    } else {
+                        ScrollView(.vertical, showsIndicators: false) {
+                            VStack(spacing: 16) {
+                                // Encabezado de la lista
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text("Promociones destacadas")
+                                            .font(.montserrat(.black, size: 18))
+                                            .foregroundColor(Color(red: 0.08, green: 0.12, blue: 0.18))
+                                        Text("En \(appState.selectedLocation.city)")
+                                            .font(.montserrat(.bold, size: 12))
+                                            .foregroundColor(Color(red: 0.58, green: 0.64, blue: 0.72))
+                                    }
+                                    Spacer()
+                                }
+                                .padding(.horizontal, 20)
+                                .padding(.top, 10)
+
+                                ForEach(filteredOffers) { offer in
+                                    ProductSearchResultRow(
+                                        price: offer,
+                                        isBestPrice: false,
+                                        bestSavingsVsHighest: nil
+                                    ) { qty, isOptional in
+                                        appState.addToCart(
+                                            productName: offer.productName ?? "Oferta",
+                                            brand: offer.brand,
+                                            imageUrl: offer.imageUrl,
+                                            selectedPrice: offer,
+                                            allPrices: [offer],
+                                            quantity: qty,
+                                            isOptional: isOptional,
+                                            ean: offer.ean
+                                        )
+                                    }
+                                }
+                                .padding(.horizontal, 16)
+
+                                Spacer()
+                                    .frame(height: 100)
+                            }
+                        }
+                        .refreshable {
+                            await reloadOffers()
+                        }
                     }
                 }
             }
             .navigationTitle("Ofertas del Día")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 if !supermarkets.isEmpty {
                     ToolbarItem(placement: .topBarTrailing) {
@@ -104,6 +127,8 @@ public struct OffersView: View {
                             }
                         } label: {
                             Image(systemName: "line.3.horizontal.decrease.circle")
+                                .font(.system(size: 16, weight: .bold))
+                                .foregroundColor(Color(red: 0.13, green: 0.77, blue: 0.36))
                                 .symbolVariant(selectedFilter == nil ? .none : .fill)
                         }
                     }

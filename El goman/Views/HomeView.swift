@@ -65,35 +65,44 @@ public struct HomeView: View {
         VStack(spacing: 16) {
             // Fila de Encabezado: Logo Mango + Tipografía exacta Montserrat
             VStack(alignment: .center, spacing: 0) {
-                HStack(alignment: .center, spacing: 10) {
+                HStack(alignment: .center, spacing: 6) {
                     // Logo Mango SVG original
-                    MangoLogoView(width: 125)
-                        .scaleEffect(1.08)
+                    MangoLogoView(width: 105)
+                        .scaleEffect(1.0)
+                        .frame(width: 105)
 
-                    // Textos "¡Ahorra en tu compra" con Montserrat Black
-                    VStack(alignment: .leading, spacing: -6) {
+                    // Textos "¡Ahorra en tu compra" con Montserrat Black ajustado para no romper líneas
+                    VStack(alignment: .leading, spacing: -4) {
                         Text("¡Ahorra")
-                            .font(.montserrat(.black, size: 42))
+                            .font(.montserrat(.black, size: 34))
                             .foregroundColor(Color(red: 0.06, green: 0.09, blue: 0.16)) // slate-950
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
 
                         Text("en tu")
-                            .font(.montserrat(.black, size: 42))
+                            .font(.montserrat(.black, size: 34))
                             .foregroundColor(Color(red: 0.06, green: 0.09, blue: 0.16))
+                            .lineLimit(1)
 
                         Text("compra")
-                            .font(.montserrat(.black, size: 42))
+                            .font(.montserrat(.black, size: 34))
                             .foregroundColor(Color(red: 0.06, green: 0.09, blue: 0.16))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
                 // "realmente!" con Montserrat Black Italic y verde #22c55e
                 HStack(spacing: 0) {
                     Text("realmente")
-                        .font(.montserrat(.blackItalic, size: 54))
+                        .font(.montserrat(.blackItalic, size: 44))
                         .foregroundColor(Color(red: 0.13, green: 0.77, blue: 0.37)) // primary-green
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
 
                     Text("!")
-                        .font(.montserrat(.black, size: 54))
+                        .font(.montserrat(.black, size: 44))
                         .foregroundColor(Color(red: 0.06, green: 0.09, blue: 0.16))
                 }
                 .padding(.top, -2)

@@ -7,6 +7,29 @@
 
 import Foundation
 
+// MARK: - Guided Search / Suggestions Response
+public struct ProductSuggestion: Identifiable, Codable, Hashable, Sendable {
+    public let id: String
+    public let name: String
+    public let brand: String?
+    public let imageUrl: String?
+    public let ean: String?
+
+    public init(id: String = UUID().uuidString, name: String, brand: String? = nil, imageUrl: String? = nil, ean: String? = nil) {
+        self.id = id
+        self.name = name
+        self.brand = brand
+        self.imageUrl = imageUrl
+        self.ean = ean
+    }
+}
+
+public struct GuidedSearchResponse: Codable, Sendable {
+    public let products: [ProductSuggestion]?
+    public let types: [String]?
+    public let sizes: [String]?
+}
+
 // MARK: - Supermarket Price Item
 public struct SupermarketPrice: Identifiable, Codable, Hashable, Sendable {
     public let id: String
@@ -159,6 +182,7 @@ public struct CartItem: Identifiable, Codable, Hashable, Sendable {
     public var allPrices: [SupermarketPrice]
     public var quantity: Int
     public var isChecked: Bool
+    public var isOptional: Bool
     public var ean: String?
 
     public init(
@@ -170,6 +194,7 @@ public struct CartItem: Identifiable, Codable, Hashable, Sendable {
         allPrices: [SupermarketPrice] = [],
         quantity: Int = 1,
         isChecked: Bool = false,
+        isOptional: Bool = false,
         ean: String? = nil
     ) {
         self.id = id
@@ -180,6 +205,7 @@ public struct CartItem: Identifiable, Codable, Hashable, Sendable {
         self.allPrices = allPrices.isEmpty ? [selectedPrice] : allPrices
         self.quantity = quantity
         self.isChecked = isChecked
+        self.isOptional = isOptional
         self.ean = ean
     }
 
@@ -259,8 +285,8 @@ public struct StoreBranch: Identifiable, Hashable, Sendable {
 }
 
 // MARK: - Unit Parser Helper
-private enum ProductModelsHelper {
-    static func parseUnit(from title: String, price: Double) -> (pricePerUnit: Double?, unitLabel: String?) {
+public enum ProductModelsHelper {
+    public static func parseUnit(from title: String, price: Double) -> (pricePerUnit: Double?, unitLabel: String?) {
         let pattern = #"(?i)(\d+(?:[.,]\d+)?)\s*(kg|kilos?|g|gr|gramos?|l|lt|litros?|ml|cc)\b"#
         guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else {
             return (nil, nil)
@@ -279,17 +305,18 @@ private enum ProductModelsHelper {
         guard let amount = Double(amountStr), amount > 0 else { return (nil, nil) }
         let unit = String(title[unitRange]).lowercased()
 
-        if unit.starts(with: "kg") || unit.starts(with: "kilo") {
-            return (price / amount, "$/kg")
-        } else if unit.starts(with: "g") {
-            let inKg = amount / 1000.0
-            return (price / inKg, "$/kg")
-        } else if unit.starts(with: "l") {
-            return (price / amount, "$/lt")
-        } else if unit.starts(with: "ml") || unit == "cc" {
-            let inLt = amount / 1000.0
-            return (price / inLt, "$/lt")
+        if ["kg", "kilo", "kilos"].contains(unit) {
+            return (price / amount, "Kg")
+        } else if ["g", "gr", "gramos"].contains(unit) {
+            let kg = amount / 1000.0
+            return (price / kg, "Kg")
+        } else if ["l", "lt", "litros", "litro"].contains(unit) {
+            return (price / amount, "L")
+        } else if ["ml", "cc"].contains(unit) {
+            let lt = amount / 1000.0
+            return (price / lt, "L")
         }
+
         return (nil, nil)
     }
 }

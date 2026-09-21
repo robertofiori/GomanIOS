@@ -13,10 +13,12 @@ public struct HomeView: View {
 
     @State private var searchText = ""
     @State private var searchResults: [SupermarketPrice] = []
+    @State private var suggestions: [ProductSuggestion] = []
     @State private var isLoading = false
+    @State private var isLoadingSuggestions = false
     @State private var errorMessage: String?
-    @State private var selectedSupermarketFilter: String? = nil
     @State private var showLocationPicker = false
+    @State private var searchTask: Task<Void, Never>? = nil
     @FocusState private var isSearchFocused: Bool
 
     public init(onNavigateToCart: @escaping () -> Void = {}) {
@@ -33,10 +35,10 @@ public struct HomeView: View {
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(spacing: 20) {
 
-                        // 1. Tarjeta Blanca Superior Principal (Hero Card)
+                        // 1. Tarjeta Blanca Superior Principal (Hero Card con Buscador y Sugerencias)
                         heroTopCard
 
-                        // 2. Si hay una búsqueda activa con resultados, mostrar los resultados
+                        // 2. Si hay una búsqueda activa con resultados o carga
                         if !searchResults.isEmpty || isLoading || errorMessage != nil {
                             searchResultsSection
                         } else {
@@ -99,56 +101,74 @@ public struct HomeView: View {
             }
             .padding(.top, 4)
 
-            // Input de Búsqueda con Botón "Ir"
-            HStack(spacing: 10) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(Color(red: 0.58, green: 0.64, blue: 0.72))
-                    .padding(.leading, 14)
+            // Input de Búsqueda con Sugerencias Desplegables
+            VStack(spacing: 8) {
+                HStack(spacing: 10) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(Color(red: 0.58, green: 0.64, blue: 0.72))
+                        .padding(.leading, 14)
 
-                TextField("Ej. Aceite Natura, Leche..", text: $searchText)
-                    .focused($isSearchFocused)
-                    .font(.montserrat(.semiBold, size: 15))
-                    .foregroundColor(Color(red: 0.08, green: 0.12, blue: 0.18))
-                    .submitLabel(.search)
-                    .onSubmit {
-                        performSearch(query: searchText)
+                    TextField("Ej. Aceite Natura, Leche..", text: $searchText)
+                        .focused($isSearchFocused)
+                        .font(.montserrat(.semiBold, size: 15))
+                        .foregroundColor(Color(red: 0.08, green: 0.12, blue: 0.18))
+                        .submitLabel(.search)
+                        .onSubmit {
+                            suggestions = []
+                            performSearch(query: searchText)
+                        }
+                        .onChange(of: searchText) { _, newValue in
+                            handleSearchTextChange(newValue)
+                        }
+
+                    if !searchText.isEmpty {
+                        Button(action: {
+                            searchText = ""
+                            suggestions = []
+                            searchResults = []
+                            errorMessage = nil
+                        }) {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundColor(Color(red: 0.58, green: 0.64, blue: 0.72))
+                                .frame(width: 32, height: 32)
+                        }
+                        .buttonStyle(.plain)
                     }
 
-                if !searchText.isEmpty {
+                    // Botón "Ir" Verde
                     Button(action: {
-                        searchText = ""
-                        searchResults = []
-                        errorMessage = nil
+                        isSearchFocused = false
+                        suggestions = []
+                        performSearch(query: searchText)
                     }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(.secondary)
+                        Text("Ir")
+                            .font(.montserrat(.bold, size: 16))
+                            .foregroundColor(.white)
+                            .frame(width: 52, height: 42)
+                            .background(Color(red: 0.13, green: 0.77, blue: 0.36)) // Verde consistente
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     }
                     .buttonStyle(.plain)
+                    .padding(.trailing, 6)
                 }
+                .frame(height: 54)
+                .background(Color(red: 0.93, green: 0.95, blue: 0.98))
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(isSearchFocused ? Color(red: 0.13, green: 0.77, blue: 0.36) : Color.clear, lineWidth: 2)
+                )
 
-                // Botón "Ir" Verde
-                Button(action: {
-                    isSearchFocused = false
-                    performSearch(query: searchText)
-                }) {
-                    Text("Ir")
-                        .font(.montserrat(.bold, size: 16))
-                        .foregroundColor(.white)
-                        .frame(width: 52, height: 42)
-                        .background(Color(red: 0.44, green: 0.84, blue: 0.56)) // Verde claro suave
-                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                // DROPDOWN DE SUGERENCIAS EN VIVO (Referencia: search1.jpg)
+                if !suggestions.isEmpty && isSearchFocused {
+                    suggestionsDropdownCard
                 }
-                .buttonStyle(.plain)
-                .padding(.trailing, 6)
             }
-            .frame(height: 54)
-            .background(Color(red: 0.93, green: 0.95, blue: 0.98)) // Gris azulado suave
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
 
             // Selector de Ubicación
             HStack(spacing: 12) {
-                // Cuadro blanco con icono de pin
                 ZStack {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
                         .fill(Color.white)
@@ -160,7 +180,6 @@ public struct HomeView: View {
                         .foregroundColor(Color(red: 0.13, green: 0.77, blue: 0.36))
                 }
 
-                // Textos de Ubicación
                 VStack(alignment: .leading, spacing: 2) {
                     Text("UBICACIÓN")
                         .font(.montserrat(.extraBold, size: 9))
@@ -174,7 +193,6 @@ public struct HomeView: View {
 
                 Spacer()
 
-                // Botón "CAMBIAR"
                 Button(action: {
                     showLocationPicker = true
                 }) {
@@ -209,12 +227,87 @@ public struct HomeView: View {
         .padding(.horizontal, 16)
     }
 
+    // MARK: - Dropdown Card de Sugerencias en Vivo
+    private var suggestionsDropdownCard: some View {
+        VStack(spacing: 0) {
+            ForEach(suggestions.prefix(6)) { item in
+                Button(action: {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    searchText = item.name
+                    suggestions = []
+                    isSearchFocused = false
+                    performSearch(query: item.ean ?? item.name)
+                }) {
+                    HStack(spacing: 12) {
+                        // Thumbnail
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .fill(Color(red: 0.95, green: 0.96, blue: 0.98))
+                                .frame(width: 44, height: 44)
+
+                            if let img = item.imageUrl, let url = URL(string: img) {
+                                AsyncImage(url: url) { phase in
+                                    if let image = phase.image {
+                                        image
+                                            .resizable()
+                                            .aspectRatio(contentMode: .fit)
+                                            .frame(width: 36, height: 36)
+                                    } else {
+                                        Image(systemName: "magnifyingglass")
+                                            .font(.caption)
+                                            .foregroundColor(Color(red: 0.60, green: 0.65, blue: 0.72))
+                                    }
+                                }
+                            } else {
+                                Image(systemName: "magnifyingglass")
+                                    .font(.caption)
+                                    .foregroundColor(Color(red: 0.60, green: 0.65, blue: 0.72))
+                            }
+                        }
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(item.name)
+                                .font(.montserrat(.bold, size: 14))
+                                .foregroundColor(Color(red: 0.08, green: 0.12, blue: 0.18))
+                                .lineLimit(1)
+
+                            if let brand = item.brand, !brand.isEmpty {
+                                Text(brand.uppercased())
+                                    .font(.montserrat(.semiBold, size: 10))
+                                    .foregroundColor(Color(red: 0.58, green: 0.64, blue: 0.72))
+                            }
+                        }
+
+                        Spacer()
+
+                        Image(systemName: "arrow.up.left")
+                            .font(.caption)
+                            .foregroundColor(Color(red: 0.78, green: 0.82, blue: 0.88))
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                }
+                .buttonStyle(.plain)
+
+                if item.id != suggestions.prefix(6).last?.id {
+                    Divider()
+                        .padding(.horizontal, 14)
+                }
+            }
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color.white)
+                .shadow(color: Color.black.opacity(0.12), radius: 14, x: 0, y: 8)
+        )
+        .transition(.opacity.combined(with: .move(edge: .top)))
+    }
+
     // MARK: - Sección "Mi Lista"
     private var myListSection: some View {
         VStack(spacing: 14) {
             // Encabezado "Mi Lista" + "VER TODO"
             HStack(spacing: 12) {
-                // Icono canasta verde
                 ZStack {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
                         .fill(Color(red: 0.90, green: 0.98, blue: 0.93))
@@ -250,10 +343,8 @@ public struct HomeView: View {
             // Tarjeta de Productos en la Lista
             VStack(spacing: 12) {
                 if appState.cartItems.isEmpty {
-                    // Item representativo / sugerido cuando la lista está vacía
                     emptyListPreviewCard
                 } else {
-                    // Elementos reales de la lista
                     ForEach(appState.cartItems.prefix(3)) { item in
                         cartPreviewRow(item)
                         if item.id != appState.cartItems.prefix(3).last?.id {
@@ -273,10 +364,8 @@ public struct HomeView: View {
         }
     }
 
-    // MARK: - Fila de Previsualización de Producto en Lista
     private func cartPreviewRow(_ item: CartItem) -> some View {
         HStack(alignment: .center, spacing: 14) {
-            // Miniatura
             ZStack {
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .fill(Color(red: 0.96, green: 0.97, blue: 0.98))
@@ -301,12 +390,23 @@ public struct HomeView: View {
                 }
             }
 
-            // Nombre y Precio
             VStack(alignment: .leading, spacing: 3) {
-                Text("Búsqueda: \(item.productName.lowercased())")
-                    .font(.montserrat(.bold, size: 14))
-                    .foregroundColor(Color(red: 0.08, green: 0.12, blue: 0.18))
-                    .lineLimit(1)
+                HStack(spacing: 6) {
+                    Text(item.productName)
+                        .font(.montserrat(.bold, size: 14))
+                        .foregroundColor(Color(red: 0.08, green: 0.12, blue: 0.18))
+                        .lineLimit(1)
+
+                    if item.isOptional {
+                        Text("OPCIONAL")
+                            .font(.montserrat(.bold, size: 8))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color(red: 0.93, green: 0.12, blue: 0.47))
+                            .clipShape(Capsule())
+                    }
+                }
 
                 Text(formatPrice(item.selectedPrice.price * Double(item.quantity)))
                     .font(.montserrat(.extraBold, size: 16))
@@ -315,7 +415,6 @@ public struct HomeView: View {
 
             Spacer()
 
-            // Stepper Pill (-  Q  +)
             HStack(spacing: 12) {
                 Button(action: {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -350,7 +449,6 @@ public struct HomeView: View {
         .padding(.vertical, 4)
     }
 
-    // MARK: - Estado sugerido cuando la lista está vacía
     private var emptyListPreviewCard: some View {
         HStack(alignment: .center, spacing: 14) {
             ZStack {
@@ -394,7 +492,7 @@ public struct HomeView: View {
 
     // MARK: - Sección de Resultados de Búsqueda
     private var searchResultsSection: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 14) {
             HStack {
                 Text("Resultados para \"\(searchText)\"")
                     .font(.montserrat(.bold, size: 18))
@@ -437,9 +535,15 @@ public struct HomeView: View {
                 .background(RoundedRectangle(cornerRadius: 24).fill(Color.white))
                 .padding(.horizontal, 16)
             } else {
+                let lowestPrice = searchResults.filter { $0.inStock && $0.price > 0 }.map(\.price).min()
                 ForEach(searchResults) { price in
-                    ProductSearchResultRow(price: price) {
-                        appState.addToCart(price)
+                    let isBest = (price.price == lowestPrice && price.inStock && price.price > 0)
+                    ProductSearchResultRow(
+                        price: price,
+                        isBestPrice: isBest,
+                        bestSavingsVsHighest: nil
+                    ) { qty, isOptional in
+                        appState.addToCart(price, quantity: qty, isOptional: isOptional)
                     }
                 }
                 .padding(.horizontal, 16)
@@ -485,6 +589,26 @@ public struct HomeView: View {
             }
         }
         .presentationDetents([.medium])
+    }
+
+    // MARK: - Sugerencias en Vivo
+    private func handleSearchTextChange(_ query: String) {
+        searchTask?.cancel()
+        guard query.trimmingCharacters(in: .whitespacesAndNewlines).count >= 2 else {
+            suggestions = []
+            return
+        }
+
+        searchTask = Task {
+            try? await Task.sleep(nanoseconds: 300_000_000) // 300ms debounce
+            if Task.isCancelled { return }
+            let results = await PriceService.shared.fetchSuggestions(query: query)
+            if !Task.isCancelled {
+                await MainActor.run {
+                    self.suggestions = results
+                }
+            }
+        }
     }
 
     // MARK: - Lógica de Búsqueda

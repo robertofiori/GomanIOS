@@ -11,9 +11,43 @@ public actor PriceService {
     public static let shared = PriceService()
 
     private var cache: [String: (data: [SupermarketPrice], timestamp: Date)] = [:]
+    private var suggestionsCache: [String: [ProductSuggestion]] = [:]
     private let cacheTTL: TimeInterval = 600 // 10 minutos
 
     private init() {}
+
+    // MARK: - Autocompletado de sugerencias en vivo
+    public func fetchSuggestions(query: String) async -> [ProductSuggestion] {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count >= 2 else { return [] }
+
+        let cacheKey = trimmed.lowercased()
+        if let cached = suggestionsCache[cacheKey] {
+            return cached
+        }
+
+        guard let encoded = trimmed.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+              let url = URL(string: "https://getsearchsuggestions-4glajx37za-uc.a.run.app?q=\(encoded)") else {
+            return []
+        }
+
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 8
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
+                return []
+            }
+            let res = try JSONDecoder().decode(GuidedSearchResponse.self, from: data)
+            let suggestions = res.products ?? []
+            suggestionsCache[cacheKey] = suggestions
+            return suggestions
+        } catch {
+            return []
+        }
+    }
 
     public func searchPrices(
         query: String,
@@ -66,7 +100,7 @@ public actor PriceService {
             let allowed = ["vea", "carrefour", "chango mas", "cooperativa obrera", "la coope"]
             validPrices = validPrices.filter { item in
                 let lower = item.supermarket.lowercased()
-                return allowed.some(where: { lower.contains($0) })
+                return allowed.contains { lower.contains($0) }
             }
         }
 
@@ -101,24 +135,14 @@ public actor PriceService {
                 allOffers.append(contentsOf: offers)
             }
 
-            // Deduplicar por nombre y supermercado
-            var unique: [SupermarketPrice] = []
-            var seen = Set<String>()
+            var uniqueMap = [String: SupermarketPrice]()
             for item in allOffers {
-                let key = "\(item.productName?.prefix(25).lowercased() ?? "")_\(item.supermarket.lowercased())"
-                if !seen.contains(key) {
-                    seen.insert(key)
-                    unique.append(item)
+                let key = item.productName?.lowercased() ?? item.id
+                if uniqueMap[key] == nil {
+                    uniqueMap[key] = item
                 }
             }
-
-            return Array(unique.shuffled().prefix(12))
+            return Array(uniqueMap.values)
         }
-    }
-}
-
-private extension Array {
-    func some(where predicate: (Element) -> Bool) -> Bool {
-        contains(where: predicate)
     }
 }

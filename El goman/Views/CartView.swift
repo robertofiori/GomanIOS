@@ -10,28 +10,62 @@ import SwiftUI
 public struct CartView: View {
     @Environment(AppState.self) private var appState
     @State private var showClearConfirmation = false
-    @State private var showOptimizationDetails = false
+    @State private var isChanguitoMode = false
+    @State private var showShareSheet = false
+    @State private var shareText: String = ""
 
     public init() {}
 
+    // Agrupar items por supermercado (como VEA, CARREFOUR, etc. en List 1.PNG)
+    private var groupedItems: [(supermarket: String, items: [CartItem])] {
+        let grouped = Dictionary(grouping: appState.cartItems) { item in
+            item.selectedPrice.supermarket.uppercased()
+        }
+        return grouped.map { (supermarket: $0.key, items: $0.value) }
+            .sorted { $0.supermarket < $1.supermarket }
+    }
+
     public var body: some View {
         NavigationStack {
-            Group {
+            ZStack {
+                // Fondo claro idéntico a la app
+                Color(red: 0.96, green: 0.97, blue: 0.98)
+                    .ignoresSafeArea()
+
                 if appState.cartItems.isEmpty {
                     emptyCartView
                 } else {
-                    cartContentView
+                    ScrollView(.vertical, showsIndicators: false) {
+                        VStack(spacing: 20) {
+                            // Cabecera con resumen y acciones rápidas
+                            headerActionRow
+
+                            // Grupos por supermercado (VEA, CARREFOUR, etc.)
+                            ForEach(groupedItems, id: \.supermarket) { group in
+                                supermarketGroupSection(supermarket: group.supermarket, items: group.items)
+                            }
+
+                            // Botones de exportar lista / compartir
+                            bottomActionsSection
+
+                            Spacer().frame(height: 100)
+                        }
+                        .padding(.top, 10)
+                    }
                 }
             }
             .navigationTitle("Mi Lista")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 if !appState.cartItems.isEmpty {
                     ToolbarItem(placement: .topBarTrailing) {
-                        Button("Vaciar", role: .destructive) {
+                        Button(action: {
                             showClearConfirmation = true
+                        }) {
+                            Image(systemName: "trash")
+                                .font(.system(size: 15, weight: .bold))
+                                .foregroundColor(Color(red: 0.88, green: 0.22, blue: 0.22))
                         }
-                        .foregroundColor(.red)
                     }
                 }
             }
@@ -47,320 +81,384 @@ public struct CartView: View {
                 }
                 Button("Cancelar", role: .cancel) {}
             }
-            .sheet(isPresented: $showOptimizationDetails) {
-                optimizationDetailsSheet
-            }
-            .safeAreaInset(edge: .bottom) {
-                Color.clear.frame(height: 85)
+            .sheet(isPresented: $showShareSheet) {
+                ShareActivityView(text: shareText)
             }
         }
     }
 
-    // MARK: - Cart Content View
-    private var cartContentView: some View {
-        List {
-            // Sección de Optimización y Recomendación
-            Section {
-                optimizationCard
-            }
-            .listRowInsets(EdgeInsets())
-            .listRowBackground(Color.clear)
+    // MARK: - Header Action Row (Modo Changuito + Resumen)
+    private var headerActionRow: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("\(appState.totalCartUnitsCount) ARTÍCULOS")
+                    .font(.montserrat(.black, size: 10))
+                    .tracking(1.0)
+                    .foregroundColor(Color(red: 0.58, green: 0.64, blue: 0.72))
 
-            // Sección de Productos
-            Section {
-                ForEach(appState.cartItems) { item in
-                    cartItemRow(item)
-                }
-                .onDelete { indexSet in
-                    for index in indexSet {
-                        let item = appState.cartItems[index]
-                        appState.removeItem(withId: item.id)
-                    }
-                }
-            } header: {
-                HStack {
-                    Text("\(appState.totalCartUnitsCount) artículos en tu lista")
-                    Spacer()
-                    Text("Total: \(formatPrice(appState.currentCartTotal))")
-                        .fontWeight(.bold)
-                        .foregroundColor(.primary)
-                }
-            } footer: {
-                Text("Deslizá hacia la izquierda para eliminar un producto.")
-                    .font(.caption2)
+                Text(formatPrice(appState.currentCartTotal))
+                    .font(.montserrat(.black, size: 22))
+                    .foregroundColor(Color(red: 0.08, green: 0.12, blue: 0.18))
             }
+
+            Spacer()
+
+            // Botón Modo Changuito (para ir tachando mientras comprás)
+            Button(action: {
+                withAnimation(.spring(response: 0.3)) {
+                    isChanguitoMode.toggle()
+                }
+            }) {
+                HStack(spacing: 6) {
+                    Image(systemName: isChanguitoMode ? "checkmark.circle.fill" : "cart")
+                        .font(.system(size: 13, weight: .bold))
+                    Text(isChanguitoMode ? "MODO COMPRA" : "CHANGUITO")
+                        .font(.montserrat(.black, size: 11))
+                        .tracking(0.5)
+                }
+                .foregroundColor(isChanguitoMode ? .white : Color(red: 0.13, green: 0.77, blue: 0.36))
+                .padding(.horizontal, 14)
+                .padding(.vertical, 9)
+                .background(
+                    isChanguitoMode
+                    ? Color(red: 0.13, green: 0.77, blue: 0.36)
+                    : Color(red: 0.90, green: 0.98, blue: 0.93)
+                )
+                .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
         }
-        .listStyle(.insetGrouped)
+        .padding(.horizontal, 20)
     }
 
-    // MARK: - Optimization Banner Card
-    private var optimizationCard: some View {
-        let opt = appState.optimizationResults
-        return VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "sparkles")
-                            .foregroundColor(.green)
-                        Text("Canasta Optimizada")
-                            .font(.subheadline)
-                            .fontWeight(.bold)
-                            .foregroundColor(.green)
-                    }
-
-                    if let best = opt.bestSupermarket {
-                        Text("El más conveniente es \(best.supermarket)")
-                            .font(.headline)
-                            .fontWeight(.bold)
-
-                        if best.savingsVsCurrent > 0 {
-                            Text("Ahorrás \(formatPrice(best.savingsVsCurrent)) frente al promedio.")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                    } else {
-                        Text("Comparando precios de tu canasta...")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                }
+    // MARK: - Supermarket Group Section (Referencia List 1.PNG)
+    private func supermarketGroupSection(supermarket: String, items: [CartItem]) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            // Título del Supermercado (ej. "VEA" en gris uppercase)
+            HStack {
+                Text(supermarket)
+                    .font(.montserrat(.black, size: 15))
+                    .tracking(1.0)
+                    .foregroundColor(Color(red: 0.45, green: 0.52, blue: 0.62))
 
                 Spacer()
 
-                Button("Ver detalle") {
-                    showOptimizationDetails = true
-                }
-                .font(.caption)
-                .fontWeight(.bold)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(Color.green.opacity(0.15))
-                .foregroundColor(.green)
-                .clipShape(Capsule())
+                let subtotal = items.reduce(0.0) { $0 + $1.totalCost }
+                Text("Subtotal: \(formatPrice(subtotal))")
+                    .font(.montserrat(.bold, size: 12))
+                    .foregroundColor(Color(red: 0.58, green: 0.64, blue: 0.72))
             }
+            .padding(.horizontal, 20)
 
-            // Barra rápida de comparación entre supermercados
-            if !opt.totalsPerSupermarket.isEmpty {
-                Divider()
-                HStack(spacing: 8) {
-                    ForEach(opt.totalsPerSupermarket.prefix(3)) { item in
-                        VStack(alignment: .leading, spacing: 2) {
-                            SupermarketBadge(item.supermarket, style: .compact)
-                            Text(formatPrice(item.effectiveTotal))
-                                .font(.caption)
-                                .fontWeight(.bold)
-                                .foregroundColor(.primary)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    }
+            // Tarjetas de productos dentro de este supermercado
+            VStack(spacing: 16) {
+                ForEach(items) { item in
+                    cartItemCard(item)
                 }
             }
+            .padding(.horizontal, 16)
         }
-        .padding(16)
-        .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .shadow(color: Color.black.opacity(0.03), radius: 6, x: 0, y: 2)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
     }
 
-    // MARK: - Cart Item Row
-    private func cartItemRow(_ item: CartItem) -> some View {
-        HStack(alignment: .center, spacing: 12) {
-            // Checkbox para marcar cuando compras en el local
-            Button(action: {
-                withAnimation {
-                    appState.toggleItemCheck(withId: item.id)
+    // MARK: - Tarjeta de Producto en Lista (Exacta a List 1.PNG)
+    private func cartItemCard(_ item: CartItem) -> some View {
+        // Buscar si existe un precio mejor o alternativa que rinda más en otro súper
+        let betterAlternative = item.allPrices
+            .filter { $0.inStock && $0.price > 0 && $0.supermarket != item.selectedPrice.supermarket }
+            .sorted { a, b in
+                let effA = a.pricePerUnit ?? a.price
+                let effB = b.pricePerUnit ?? b.price
+                return effA < effB
+            }
+            .first
+
+        let isBetterPrice = betterAlternative != nil && (betterAlternative!.price < item.selectedPrice.price)
+
+        return VStack(spacing: 0) {
+            // Pill Flotante Superior (¡RINDE MÁS! o MÁS BARATO) si aplica
+            if let better = betterAlternative, isBetterPrice {
+                HStack {
+                    Spacer()
+                    Button(action: {
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        withAnimation {
+                            appState.replacePrice(for: item.id, with: better)
+                        }
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "chart.line.downtrend.xyaxis")
+                                .font(.system(size: 10, weight: .bold))
+
+                            if let ppuBetter = better.pricePerUnit, let ppuCurrent = item.selectedPrice.pricePerUnit, ppuBetter < ppuCurrent {
+                                Text("¡RINDE MÁS POR \(formatPrice(better.price))!")
+                            } else {
+                                Text("MÁS BARATO (\(formatPrice(better.price)))")
+                            }
+                        }
+                        .font(.montserrat(.black, size: 9))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Color(red: 0.05, green: 0.75, blue: 0.55)) // Teal/verde brillante
+                        .clipShape(Capsule())
+                        .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
+                    }
+                    .buttonStyle(.plain)
+                    .offset(y: 12)
+                    .zIndex(10)
                 }
+                .padding(.trailing, 16)
+            }
+
+            // Barra Superior de Estado: [ 📌 PRINCIPAL / OPCIONAL ] + [ HACER OPCIONAL / PRINCIPAL ]
+            HStack {
+                // Indicador de tipo
+                HStack(spacing: 5) {
+                    Image(systemName: item.isOptional ? "arrow.triangle.swap" : "pin.fill")
+                        .font(.system(size: 10))
+
+                    Text(item.isOptional ? "OPCIONAL" : "PRINCIPAL")
+                        .font(.montserrat(.black, size: 10))
+                        .tracking(0.5)
+                }
+                .foregroundColor(.white)
+                .padding(.leading, 12)
+
+                Spacer()
+
+                // Botón Magenta/Rosa "HACER OPCIONAL" / "HACER PRINCIPAL"
+                Button(action: {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    withAnimation {
+                        appState.toggleOptional(for: item)
+                    }
+                }) {
+                    Text(item.isOptional ? "HACER PRINCIPAL" : "HACER OPCIONAL")
+                        .font(.montserrat(.black, size: 9))
+                        .tracking(0.5)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color(red: 0.93, green: 0.12, blue: 0.47)) // Magenta #E11D48
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .padding(.trailing, 8)
+            }
+            .frame(height: 38)
+            .background(Color(red: 0.40, green: 0.44, blue: 0.50)) // Slate-gray suave como en la imagen
+            .clipShape(Capsule())
+            .padding(.horizontal, 12)
+            .padding(.top, 12)
+
+            // Fila de Contenido: Imagen + Datos + Stepper Grande
+            HStack(alignment: .center, spacing: 14) {
+                // Checkbox en modo changuito
+                if isChanguitoMode {
+                    Button(action: {
+                        withAnimation {
+                            appState.toggleItemCheck(withId: item.id)
+                        }
+                    }) {
+                        Image(systemName: item.isChecked ? "checkmark.circle.fill" : "circle")
+                            .font(.system(size: 24))
+                            .foregroundColor(item.isChecked ? Color(red: 0.13, green: 0.77, blue: 0.36) : Color(red: 0.78, green: 0.82, blue: 0.88))
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                // Imagen en tarjeta redondeada
+                ZStack {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(Color(red: 0.96, green: 0.97, blue: 0.98))
+                        .frame(width: 70, height: 70)
+
+                    if let img = item.imageUrl ?? item.selectedPrice.imageUrl, let url = URL(string: img) {
+                        AsyncImage(url: url) { phase in
+                            if let image = phase.image {
+                                image
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fit)
+                                    .frame(width: 58, height: 58)
+                            } else {
+                                Image(systemName: "basket.fill")
+                                    .foregroundColor(Color(red: 0.75, green: 0.80, blue: 0.88))
+                            }
+                        }
+                    } else {
+                        Image(systemName: "basket.fill")
+                            .foregroundColor(Color(red: 0.75, green: 0.80, blue: 0.88))
+                    }
+                }
+
+                // Título + Precio Total + Precio Unitario + Tienda Link
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(item.productName)
+                        .font(.montserrat(.bold, size: 14))
+                        .foregroundColor(Color(red: 0.08, green: 0.12, blue: 0.18))
+                        .lineLimit(2)
+                        .strikethrough(item.isChecked)
+
+                    HStack(spacing: 8) {
+                        Text(formatPrice(item.totalCost))
+                            .font(.montserrat(.black, size: 15))
+                            .foregroundColor(Color(red: 0.13, green: 0.77, blue: 0.36))
+
+                        if let urlStr = item.selectedPrice.url, let url = URL(string: urlStr) {
+                            Link(destination: url) {
+                                HStack(spacing: 2) {
+                                    Image(systemName: "arrow.up.right.square")
+                                        .font(.system(size: 10))
+                                    Text("Tienda")
+                                        .font(.montserrat(.bold, size: 9))
+                                }
+                                .foregroundColor(Color(red: 0.58, green: 0.64, blue: 0.72))
+                            }
+                        }
+                    }
+
+                    // Precio de Referencia por Kilo / Litro
+                    if let ppu = item.selectedPrice.pricePerUnit, let uLabel = item.selectedPrice.unitType {
+                        HStack(spacing: 3) {
+                            Text("⚖️")
+                                .font(.system(size: 10))
+                            Text("\(formatPrice(ppu)) / \(uLabel)")
+                                .font(.montserrat(.bold, size: 11))
+                                .foregroundColor(Color(red: 0.13, green: 0.65, blue: 0.35))
+                        }
+                    }
+                }
+
+                Spacer(minLength: 0)
+
+                // Stepper Horizontal Grande y Claro (como en List 1.PNG)
+                HStack(spacing: 12) {
+                    Button(action: {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        appState.updateQuantity(for: item, delta: -1)
+                    }) {
+                        Text("—")
+                            .font(.montserrat(.bold, size: 16))
+                            .foregroundColor(Color(red: 0.45, green: 0.52, blue: 0.62))
+                            .frame(width: 24, height: 32)
+                    }
+                    .buttonStyle(.plain)
+
+                    Text("\(item.quantity)")
+                        .font(.montserrat(.black, size: 17))
+                        .foregroundColor(Color(red: 0.08, green: 0.12, blue: 0.18))
+                        .frame(minWidth: 16)
+
+                    Button(action: {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        appState.updateQuantity(for: item, delta: 1)
+                    }) {
+                        Text("+")
+                            .font(.montserrat(.bold, size: 18))
+                            .foregroundColor(Color(red: 0.13, green: 0.77, blue: 0.36))
+                            .frame(width: 24, height: 32)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(Color(red: 0.94, green: 0.96, blue: 0.98))
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            }
+            .padding(14)
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .fill(Color.white)
+                .shadow(color: Color.black.opacity(0.04), radius: 10, x: 0, y: 4)
+        )
+    }
+
+    // MARK: - Botones de Exportar / Compartir
+    private var bottomActionsSection: some View {
+        VStack(spacing: 12) {
+            Button(action: {
+                generateShareText()
+                showShareSheet = true
             }) {
-                Image(systemName: item.isChecked ? "checkmark.circle.fill" : "circle")
-                    .font(.title2)
-                    .foregroundColor(item.isChecked ? .green : .secondary)
+                HStack(spacing: 8) {
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.system(size: 16, weight: .bold))
+                    Text("COMPARTIR LISTA")
+                        .font(.montserrat(.black, size: 13))
+                        .tracking(0.5)
+                }
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 52)
+                .background(Color(red: 0.15, green: 0.83, blue: 0.40)) // Verde WhatsApp / ElMango
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .shadow(color: Color(red: 0.15, green: 0.83, blue: 0.40).opacity(0.3), radius: 8, x: 0, y: 4)
             }
             .buttonStyle(.plain)
-
-            // Datos del producto
-            VStack(alignment: .leading, spacing: 4) {
-                Text(item.productName)
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                    .strikethrough(item.isChecked)
-                    .foregroundColor(item.isChecked ? .secondary : .primary)
-                    .lineLimit(2)
-
-                HStack(spacing: 6) {
-                    SupermarketBadge(item.selectedPrice.supermarket, style: .compact)
-
-                    Text(formatPrice(item.selectedPrice.price) + " c/u")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                }
-            }
-
-            Spacer(minLength: 4)
-
-            // Selector de cantidad (+ / -)
-            HStack(spacing: 8) {
-                Button(action: {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    withAnimation {
-                        appState.updateQuantity(for: item, delta: -1)
-                    }
-                }) {
-                    Image(systemName: "minus")
-                        .font(.caption)
-                        .fontWeight(.bold)
-                        .frame(width: 28, height: 28)
-                        .background(Color(.systemGray5))
-                        .clipShape(Circle())
-                }
-                .buttonStyle(.plain)
-
-                Text("\(item.quantity)")
-                    .font(.subheadline)
-                    .fontWeight(.bold)
-                    .frame(minWidth: 20)
-
-                Button(action: {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    withAnimation {
-                        appState.updateQuantity(for: item, delta: 1)
-                    }
-                }) {
-                    Image(systemName: "plus")
-                        .font(.caption)
-                        .fontWeight(.bold)
-                        .frame(width: 28, height: 28)
-                        .background(Color(.systemGray5))
-                        .clipShape(Circle())
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(.trailing, 2)
         }
-        .padding(.vertical, 4)
+        .padding(.horizontal, 16)
+        .padding(.top, 10)
     }
 
-    // MARK: - Empty Cart View
+    private func generateShareText() {
+        var text = "🛒 *Mi Lista de Compras en ElMango* 🥭\n\n"
+        for group in groupedItems {
+            text += "*\(group.supermarket)*\n"
+            for item in group.items {
+                let optTag = item.isOptional ? " [OPCIONAL]" : ""
+                text += "• \(item.quantity)x \(item.productName)\(optTag) - \(formatPrice(item.totalCost))\n"
+            }
+            let sub = group.items.reduce(0.0) { $0 + $1.totalCost }
+            text += "Subtotal: \(formatPrice(sub))\n\n"
+        }
+        text += "💰 *Total General: \(formatPrice(appState.currentCartTotal))*\n"
+        text += "Comparado en Bahía Blanca con ElMango."
+        shareText = text
+    }
+
+    // MARK: - Estado Vacío
     private var emptyCartView: some View {
-        VStack(spacing: 16) {
-            Spacer()
+        VStack(spacing: 18) {
             ZStack {
                 Circle()
-                    .fill(Color.green.opacity(0.12))
-                    .frame(width: 100, height: 100)
-                Image(systemName: "cart.badge.plus")
-                    .font(.system(size: 46))
-                    .foregroundColor(.green)
+                    .fill(Color(red: 0.90, green: 0.98, blue: 0.93))
+                    .frame(width: 110, height: 110)
+
+                Image(systemName: "cart.fill")
+                    .font(.system(size: 48))
+                    .foregroundColor(Color(red: 0.13, green: 0.77, blue: 0.36))
             }
 
             Text("Tu lista está vacía")
-                .font(.title2)
-                .fontWeight(.bold)
+                .font(.montserrat(.black, size: 24))
+                .foregroundColor(Color(red: 0.08, green: 0.12, blue: 0.18))
 
-            Text("Buscá productos en el catálogo o escaneá códigos de barra para empezar a comparar precios y ahorrar.")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
+            Text("Buscá productos en el inicio y agregalos como principales u opcionales.")
+                .font(.montserrat(.regular, size: 14))
+                .foregroundColor(Color(red: 0.58, green: 0.64, blue: 0.72))
                 .multilineTextAlignment(.center)
-                .padding(.horizontal, 36)
-
-            Spacer()
+                .padding(.horizontal, 32)
         }
-    }
-
-    // MARK: - Optimization Details Sheet
-    private var optimizationDetailsSheet: some View {
-        NavigationStack {
-            let opt = appState.optimizationResults
-            List {
-                Section {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Comparativa General")
-                            .font(.headline)
-                        Text("Calculamos el total que pagarías si compraras toda tu lista en un solo supermercado, sumando promociones bancarias aplicables hoy.")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    .padding(.vertical, 4)
-                }
-
-                Section("Totales por Comercio") {
-                    ForEach(opt.totalsPerSupermarket) { total in
-                        HStack {
-                            VStack(alignment: .leading, spacing: 4) {
-                                HStack(spacing: 6) {
-                                    SupermarketBadge(total.supermarket)
-                                    if let disc = total.appliedDiscount {
-                                        Text(disc)
-                                            .font(.system(size: 10, weight: .bold))
-                                            .foregroundColor(.white)
-                                            .padding(.horizontal, 6)
-                                            .padding(.vertical, 2)
-                                            .background(Color.blue)
-                                            .clipShape(Capsule())
-                                    }
-                                }
-
-                                Text("\(total.itemCount) de \(appState.cartItems.count) productos encontrados (\(total.matchPercentage)%)")
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
-                            }
-
-                            Spacer()
-
-                            VStack(alignment: .trailing, spacing: 2) {
-                                Text(formatPrice(total.effectiveTotal))
-                                    .font(.headline)
-                                    .fontWeight(.bold)
-                                    .foregroundColor(total.supermarket == opt.bestSupermarket?.supermarket ? .green : .primary)
-
-                                if total.savingsVsCurrent > 0 {
-                                    Text("Ahorrás \(formatPrice(total.savingsVsCurrent))")
-                                        .font(.caption2)
-                                        .foregroundColor(.green)
-                                }
-                            }
-                        }
-                        .padding(.vertical, 4)
-                    }
-                }
-
-                Section("Mínimo Teórico Dividido") {
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack {
-                            Text("Comprando cada producto en su súper más barato:")
-                                .font(.subheadline)
-                            Spacer()
-                            Text(formatPrice(opt.theoreticalMin))
-                                .font(.headline)
-                                .fontWeight(.bold)
-                                .foregroundColor(.green)
-                        }
-
-                        if appState.currentCartTotal > opt.theoreticalMin {
-                            Text("Podrías ahorrar hasta \(formatPrice(appState.currentCartTotal - opt.theoreticalMin)) repartiendo la compra.")
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                    .padding(.vertical, 4)
-                }
-            }
-            .navigationTitle("Optimizador de Canasta")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Listo") { showOptimizationDetails = false }
-                }
-            }
-        }
+        .padding()
     }
 
     private func formatPrice(_ value: Double) -> String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
-        formatter.currencySymbol = "$"
+        formatter.locale = Locale(identifier: "es_AR")
         formatter.maximumFractionDigits = 0
         return formatter.string(from: NSNumber(value: value)) ?? "$\(Int(value))"
     }
+}
+
+// Helper para compartir texto nativo
+struct ShareActivityView: UIViewControllerRepresentable {
+    let text: String
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: [text], applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }

@@ -11,220 +11,158 @@ import AVFoundation
 public struct ScannerView: View {
     @Environment(AppState.self) private var appState
 
-    @State private var manualBarcode = ""
-    @State private var isScanning = true
-    @State private var isProcessing = false
+    @State private var scannedCode: String?
     @State private var scannedProduct: ProductData?
     @State private var scannedPrices: [SupermarketPrice] = []
-    @State private var showResultSheet = false
-    @State private var statusMessage = "Apunta la cámara al código de barras del producto"
-
-    private let sampleBarcodes = [
-        ("7790070507204", "Aceite Natura 1.5L"),
-        ("7790742330602", "Leche La Serenísima 1L"),
-        ("7790580982704", "Arroz Lucchetti 1kg")
-    ]
+    @State private var isSearching = false
+    @State private var errorMessage: String?
+    @State private var showProductDetail = false
 
     public init() {}
 
     public var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                // Visor de Cámara / Escáner
-                ZStack {
-                    #if targetEnvironment(simulator)
-                    simulatorCameraMock
-                    #else
-                    CameraScannerRepresentable { code in
-                        handleScannedBarcode(code)
-                    }
-                    .ignoresSafeArea(edges: .top)
-                    #endif
-
-                    // Retícula de escaneo
-                    scannerOverlay
-                }
-                .frame(maxHeight: .infinity)
-
-                // Panel inferior: Entrada manual & Ejemplos rápidos
-                bottomControlPanel
-            }
-            .navigationTitle("Escanear")
-            .navigationBarTitleDisplayMode(.inline)
-            .sheet(isPresented: $showResultSheet) {
-                scannedResultSheet
-            }
-        }
-    }
-
-    // MARK: - Scanner Overlay
-    private var scannerOverlay: some View {
-        VStack {
-            Spacer()
-
             ZStack {
-                RoundedRectangle(cornerRadius: 20)
-                    .stroke(Color.green, lineWidth: 3)
-                    .frame(width: 260, height: 160)
-                    .background(Color.black.opacity(0.1))
-
-                if isProcessing {
-                    ProgressView()
-                        .scaleEffect(1.5)
-                        .tint(.green)
+                // Vista de cámara simulada / real
+                CameraPreviewView { barcode in
+                    handleBarcodeScanned(barcode)
                 }
-            }
+                .ignoresSafeArea()
 
-            Text(statusMessage)
-                .font(.footnote)
-                .fontWeight(.medium)
-                .foregroundColor(.white)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 20)
-                .padding(.vertical, 8)
-                .background(Color.black.opacity(0.65))
-                .clipShape(Capsule())
-                .padding(.top, 16)
+                // Overlay con mira de escaneo
+                VStack {
+                    Spacer()
 
-            Spacer()
-        }
-    }
+                    // Recuadro visor de escaneo
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(Color.white.opacity(0.8), lineWidth: 2)
+                            .frame(width: 260, height: 160)
 
-    // MARK: - Simulator Mock
-    private var simulatorCameraMock: some View {
-        ZStack {
-            Color.black.ignoresSafeArea()
-            VStack(spacing: 12) {
-                Image(systemName: "camera.viewfinder")
-                    .font(.system(size: 60))
-                    .foregroundColor(.green.opacity(0.8))
-                Text("Simulador de Cámara")
-                    .font(.headline)
-                    .foregroundColor(.white)
-                Text("Usa los botones rápidos o escribe un código manual para probar.")
-                    .font(.caption)
-                    .foregroundColor(.gray)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 40)
-            }
-        }
-    }
+                        // Animación de línea láser
+                        LaserLineView()
+                            .frame(width: 240, height: 140)
+                    }
 
-    // MARK: - Bottom Control Panel
-    private var bottomControlPanel: some View {
-        VStack(spacing: 14) {
-            // Códigos de ejemplo rápido
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(sampleBarcodes, id: \.0) { sample in
-                        Button(action: {
-                            handleScannedBarcode(sample.0)
-                        }) {
-                            HStack(spacing: 4) {
-                                Image(systemName: "barcode")
-                                    .font(.caption2)
-                                Text(sample.1)
-                                    .font(.caption)
-                            }
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(Color(.secondarySystemBackground))
-                            .clipShape(Capsule())
+                    Text("Alineá el código de barras dentro del marco")
+                        .font(.footnote)
+                        .foregroundColor(.white)
+                        .shadow(radius: 4)
+                        .padding(.top, 16)
+
+                    Spacer()
+
+                    // Indicador de carga al detectar
+                    if isSearching {
+                        VStack(spacing: 8) {
+                            ProgressView()
+                                .tint(.white)
+                            Text("Buscando en supermercados...")
+                                .font(.caption)
+                                .foregroundColor(.white)
                         }
+                        .padding()
+                        .background(.ultraThinMaterial)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .padding(.bottom, 24)
+                    }
+
+                    if let error = errorMessage {
+                        Text(error)
+                            .font(.caption)
+                            .foregroundColor(.red)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(.white)
+                            .clipShape(Capsule())
+                            .padding(.bottom, 24)
                     }
                 }
-                .padding(.horizontal)
+                .padding()
             }
-
-            // Entrada manual
-            HStack(spacing: 10) {
-                TextField("Escribir código de barras (EAN)...", text: $manualBarcode)
-                    .keyboardType(.numberPad)
-                    .font(.subheadline)
-                    .padding(10)
-                    .background(Color(.secondarySystemBackground))
-                    .cornerRadius(12)
-
-                Button("Consultar") {
-                    if !manualBarcode.isEmpty {
-                        handleScannedBarcode(manualBarcode)
-                    }
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(.green)
-                .disabled(manualBarcode.isEmpty)
+            .navigationTitle("Escanear Producto")
+            .navigationBarTitleDisplayMode(.inline)
+            .sheet(isPresented: $showProductDetail) {
+                productDetailSheet
             }
-            .padding(.horizontal)
-            .padding(.bottom, 12)
         }
-        .padding(.top, 12)
-        .background(Color(.systemBackground))
     }
 
-    // MARK: - Handle Scanned Code
-    private func handleScannedBarcode(_ barcode: String) {
-        guard !isProcessing else { return }
-        isProcessing = true
-        statusMessage = "Buscando código \(barcode)..."
+    private func handleBarcodeScanned(_ code: String) {
+        guard scannedCode != code && !isSearching else { return }
+        scannedCode = code
+        isSearching = true
+        errorMessage = nil
+
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
 
         Task {
-            // 1. Consultar Open Food Facts
-            let productData = await BarcodeService.shared.fetchProductInfo(barcode: barcode)
+            // 1. Obtener datos del producto vía Open Food Facts
+            let product = await BarcodeService.shared.fetchProductInfo(barcode: code)
 
-            // 2. Consultar Precios en supermercados
-            let query = productData?.productName ?? barcode
-            let prices = (try? await PriceService.shared.searchPrices(
-                query: query,
-                location: appState.selectedLocation
-            )) ?? []
+            // 2. Buscar precios en los supermercados de Bahía Blanca
+            let searchTerm = product?.productName ?? code
+            var prices: [SupermarketPrice] = []
+            do {
+                prices = try await PriceService.shared.searchPrices(
+                    query: searchTerm,
+                    location: appState.selectedLocation
+                )
+            } catch {
+                // Si falla por término, reintentamos con el barcode directo
+                if let fallback = try? await PriceService.shared.searchPrices(query: code, location: appState.selectedLocation) {
+                    prices = fallback
+                }
+            }
 
             await MainActor.run {
-                self.scannedProduct = productData
+                self.scannedProduct = product
                 self.scannedPrices = prices
-                self.isProcessing = false
-                self.statusMessage = "Producto encontrado"
-                self.showResultSheet = true
+                self.isSearching = false
+                self.showProductDetail = true
             }
         }
     }
 
-    // MARK: - Scanned Result Sheet
-    private var scannedResultSheet: some View {
+    // MARK: - Detalle del producto escaneado
+    private var productDetailSheet: some View {
         NavigationStack {
             List {
-                Section {
-                    HStack(spacing: 14) {
+                Section("Producto Identificado") {
+                    HStack(spacing: 12) {
                         if let img = scannedProduct?.imageUrl, let url = URL(string: img) {
                             AsyncImage(url: url) { phase in
                                 if let image = phase.image {
                                     image
                                         .resizable()
                                         .aspectRatio(contentMode: .fit)
-                                        .frame(width: 70, height: 70)
+                                        .frame(width: 60, height: 60)
+                                        .clipShape(RoundedRectangle(cornerRadius: 8))
                                 } else {
-                                    Image(systemName: "barcode")
-                                        .font(.largeTitle)
+                                    Image(systemName: "barcode.viewfinder")
+                                        .font(.title)
                                         .foregroundColor(.secondary)
                                 }
                             }
-                            .frame(width: 70, height: 70)
+                        } else {
+                            Image(systemName: "barcode.viewfinder")
+                                .font(.title)
+                                .foregroundColor(.secondary)
                         }
 
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(scannedProduct?.productName ?? "Producto escaneado")
+                            Text(scannedProduct?.productName ?? "Código: \(scannedCode ?? "")")
                                 .font(.headline)
-                                .foregroundColor(.primary)
 
                             if let brand = scannedProduct?.brands {
                                 Text(brand)
-                                    .font(.caption)
+                                    .font(.subheadline)
                                     .foregroundColor(.secondary)
                             }
 
                             if let qty = scannedProduct?.quantity {
                                 Text(qty)
-                                    .font(.caption2)
+                                    .font(.caption)
                                     .foregroundColor(.secondary)
                             }
                         }
@@ -239,14 +177,19 @@ public struct ScannerView: View {
                             .foregroundColor(.secondary)
                     } else {
                         ForEach(scannedPrices) { price in
-                            ProductSearchResultRow(price: price) {
+                            ProductSearchResultRow(
+                                price: price,
+                                isBestPrice: price.id == scannedPrices.first?.id,
+                                bestSavingsVsHighest: nil
+                            ) { qty, isOptional in
                                 appState.addToCart(
                                     productName: price.productName ?? scannedProduct?.productName ?? "Producto",
                                     brand: price.brand ?? scannedProduct?.brands,
                                     imageUrl: price.imageUrl ?? scannedProduct?.imageUrl,
                                     selectedPrice: price,
                                     allPrices: scannedPrices,
-                                    quantity: 1,
+                                    quantity: qty,
+                                    isOptional: isOptional,
                                     ean: scannedProduct?.code
                                 )
                             }
@@ -258,90 +201,96 @@ public struct ScannerView: View {
             .navigationTitle("Detalle de Escaneo")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .cancellationAction) {
                     Button("Cerrar") {
-                        showResultSheet = false
-                        statusMessage = "Apunta la cámara al código de barras del producto"
+                        showProductDetail = false
+                        scannedCode = nil
                     }
                 }
             }
         }
+        .presentationDetents([.medium, .large])
     }
 }
 
-// MARK: - Native AVCapture Barcode Scanner Representable
-#if !targetEnvironment(simulator)
-struct CameraScannerRepresentable: UIViewControllerRepresentable {
-    let onCodeScanned: (String) -> Void
+// MARK: - Visor Láser Animado
+private struct LaserLineView: View {
+    @State private var offset: CGFloat = -60
+
+    var body: some View {
+        Rectangle()
+            .fill(Color.red.opacity(0.8))
+            .frame(height: 2)
+            .shadow(color: .red, radius: 4, x: 0, y: 0)
+            .offset(y: offset)
+            .onAppear {
+                withAnimation(
+                    .easeInOut(duration: 1.5)
+                    .repeatForever(autoreverses: true)
+                ) {
+                    offset = 60
+                }
+            }
+    }
+}
+
+// MARK: - Camera Preview Wrapper
+private struct CameraPreviewView: UIViewControllerRepresentable {
+    let onBarcodeFound: (String) -> Void
 
     func makeUIViewController(context: Context) -> BarcodeScannerViewController {
         let vc = BarcodeScannerViewController()
-        vc.delegate = context.coordinator
+        vc.onBarcodeScanned = onBarcodeFound
         return vc
     }
 
     func updateUIViewController(_ uiViewController: BarcodeScannerViewController, context: Context) {}
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(onCodeScanned: onCodeScanned)
-    }
-
-    class Coordinator: NSObject, AVCaptureMetadataOutputObjectsDelegate {
-        let onCodeScanned: (String) -> Void
-        private var lastCode = ""
-        private var lastScanTime = Date.distantPast
-
-        init(onCodeScanned: @escaping (String) -> Void) {
-            self.onCodeScanned = onCodeScanned
-        }
-
-        func metadataOutput(_ output: AVCaptureMetadataOutput, didOutput metadataObjects: [AVMetadataObject], from connection: AVCaptureConnection) {
-            guard let metadataObject = metadataObjects.first as? AVMetadataMachineReadableCodeObject,
-                  let stringValue = metadataObject.stringValue else { return }
-
-            if stringValue != lastCode || Date().timeIntervalSince(lastScanTime) > 3.0 {
-                lastCode = stringValue
-                lastScanTime = Date()
-                DispatchQueue.main.async {
-                    self.onCodeScanned(stringValue)
-                }
-            }
-        }
-    }
 }
 
-final class BarcodeScannerViewController: UIViewController {
-    var delegate: AVCaptureMetadataOutputObjectsDelegate?
+private class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObjectsDelegate {
+    var onBarcodeScanned: ((String) -> Void)?
+
     private var captureSession: AVCaptureSession?
     private var previewLayer: AVCaptureVideoPreviewLayer?
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = .black
         setupCamera()
+    }
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        previewLayer?.frame = view.bounds
     }
 
     private func setupCamera() {
         let session = AVCaptureSession()
-        guard let device = AVCaptureDevice.default(for: .video),
-              let input = try? AVCaptureDeviceInput(device: device) else {
+
+        guard let videoCaptureDevice = AVCaptureDevice.default(for: .video) else { return }
+        guard let videoInput = try? AVCaptureDeviceInput(device: videoCaptureDevice) else { return }
+
+        if session.canAddInput(videoInput) {
+            session.addInput(videoInput)
+        } else {
             return
         }
 
-        if session.canAddInput(input) {
-            session.addInput(input)
-        }
-
         let metadataOutput = AVCaptureMetadataOutput()
+
         if session.canAddOutput(metadataOutput) {
             session.addOutput(metadataOutput)
-            metadataOutput.setMetadataObjectsDelegate(delegate, queue: DispatchQueue.main)
-            metadataOutput.metadataObjectTypes = [.ean13, .ean8, .qr, .upce, .code128]
+
+            metadataOutput.setMetadataObjectsDelegate(self, queue: DispatchQueue.main)
+            metadataOutput.metadataObjectTypes = [.ean8, .ean13, .qr, .upce, .code128]
+        } else {
+            return
         }
 
         let preview = AVCaptureVideoPreviewLayer(session: session)
+        preview.frame = view.layer.bounds
         preview.videoGravity = .resizeAspectFill
         view.layer.addSublayer(preview)
+
         self.previewLayer = preview
         self.captureSession = session
 
@@ -350,9 +299,22 @@ final class BarcodeScannerViewController: UIViewController {
         }
     }
 
-    override func viewDidLayoutSubviews() {
-        super.viewDidLayoutSubviews()
-        previewLayer?.frame = view.bounds
+    func metadataOutput(
+        _ output: AVCaptureMetadataOutput,
+        didOutput metadataObjects: [AVMetadataObject],
+        from connection: AVCaptureConnection
+    ) {
+        if let metadataObject = metadataObjects.first,
+           let readableObject = metadataObject as? AVMetadataMachineReadableCodeObject,
+           let stringValue = readableObject.stringValue {
+            onBarcodeScanned?(stringValue)
+        }
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        if captureSession?.isRunning == true {
+            captureSession?.stopRunning()
+        }
     }
 }
-#endif

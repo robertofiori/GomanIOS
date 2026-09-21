@@ -220,6 +220,8 @@ public struct CartView: View {
                     Text(item.isOptional ? "OPCIONAL" : "PRINCIPAL")
                         .font(.montserrat(.black, size: 10))
                         .tracking(0.5)
+                        .lineLimit(1)
+                        .fixedSize()
                 }
                 .foregroundColor(.white)
                 .padding(.leading, 12)
@@ -237,22 +239,24 @@ public struct CartView: View {
                         .font(.montserrat(.black, size: 9))
                         .tracking(0.5)
                         .foregroundColor(.white)
-                        .padding(.horizontal, 12)
+                        .padding(.horizontal, 10)
                         .padding(.vertical, 6)
                         .background(Color(red: 0.93, green: 0.12, blue: 0.47)) // Magenta #E11D48
                         .clipShape(Capsule())
+                        .lineLimit(1)
+                        .fixedSize()
                 }
                 .buttonStyle(.plain)
-                .padding(.trailing, 8)
+                .padding(.trailing, 6)
             }
-            .frame(height: 38)
-            .background(Color(red: 0.40, green: 0.44, blue: 0.50)) // Slate-gray suave como en la imagen
+            .frame(height: 36)
+            .background(Color(red: 0.40, green: 0.44, blue: 0.50)) // Slate-gray suave
             .clipShape(Capsule())
             .padding(.horizontal, 12)
-            .padding(.top, 12)
+            .padding(.top, 10)
 
-            // Fila de Contenido: Imagen + Datos + Stepper Grande
-            HStack(alignment: .center, spacing: 14) {
+            // Fila de Contenido: Imagen + Datos + Stepper Compacto
+            HStack(alignment: .center, spacing: 12) {
                 // Checkbox en modo changuito
                 if isChanguitoMode {
                     Button(action: {
@@ -261,7 +265,7 @@ public struct CartView: View {
                         }
                     }) {
                         Image(systemName: item.isChecked ? "checkmark.circle.fill" : "circle")
-                            .font(.system(size: 24))
+                            .font(.system(size: 22))
                             .foregroundColor(item.isChecked ? Color(red: 0.13, green: 0.77, blue: 0.36) : Color(red: 0.78, green: 0.82, blue: 0.88))
                     }
                     .buttonStyle(.plain)
@@ -269,9 +273,9 @@ public struct CartView: View {
 
                 // Imagen en tarjeta redondeada
                 ZStack {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .fill(Color(red: 0.96, green: 0.97, blue: 0.98))
-                        .frame(width: 70, height: 70)
+                        .frame(width: 58, height: 58)
 
                     if let img = item.imageUrl ?? item.selectedPrice.imageUrl, let url = URL(string: img) {
                         AsyncImage(url: url) { phase in
@@ -279,7 +283,7 @@ public struct CartView: View {
                                 image
                                     .resizable()
                                     .aspectRatio(contentMode: .fit)
-                                    .frame(width: 58, height: 58)
+                                    .frame(width: 48, height: 48)
                             } else {
                                 Image(systemName: "basket.fill")
                                     .foregroundColor(Color(red: 0.75, green: 0.80, blue: 0.88))
@@ -291,18 +295,21 @@ public struct CartView: View {
                     }
                 }
 
-                // Título + Precio Total + Precio Unitario + Tienda Link
+                // Título + Precio Total + Tienda Link + Precio Unitario
                 VStack(alignment: .leading, spacing: 3) {
                     Text(item.productName)
-                        .font(.montserrat(.bold, size: 14))
+                        .font(.montserrat(.bold, size: 13))
                         .foregroundColor(Color(red: 0.08, green: 0.12, blue: 0.18))
                         .lineLimit(2)
                         .strikethrough(item.isChecked)
 
-                    HStack(spacing: 8) {
+                    HStack(alignment: .center, spacing: 6) {
                         Text(formatPrice(item.totalCost))
                             .font(.montserrat(.black, size: 15))
                             .foregroundColor(Color(red: 0.13, green: 0.77, blue: 0.36))
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
+                            .layoutPriority(2)
 
                         if let urlStr = item.selectedPrice.url, let url = URL(string: urlStr) {
                             Link(destination: url) {
@@ -311,9 +318,16 @@ public struct CartView: View {
                                         .font(.system(size: 10))
                                     Text("Tienda")
                                         .font(.montserrat(.bold, size: 9))
+                                        .lineLimit(1)
                                 }
                                 .foregroundColor(Color(red: 0.58, green: 0.64, blue: 0.72))
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color(red: 0.94, green: 0.95, blue: 0.97))
+                                .clipShape(Capsule())
                             }
+                            .fixedSize()
+                            .layoutPriority(1)
                         }
                     }
 
@@ -323,29 +337,30 @@ public struct CartView: View {
                             Text("⚖️")
                                 .font(.system(size: 10))
                             Text("\(formatPrice(ppu)) / \(uLabel)")
-                                .font(.montserrat(.bold, size: 11))
+                                .font(.montserrat(.bold, size: 10))
                                 .foregroundColor(Color(red: 0.13, green: 0.65, blue: 0.35))
+                                .lineLimit(1)
                         }
+                        .fixedSize(horizontal: true, vertical: false)
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-                Spacer(minLength: 0)
-
-                // Stepper Horizontal Grande y Claro (como en List 1.PNG)
-                HStack(spacing: 12) {
+                // Stepper Horizontal Compacto
+                HStack(spacing: 8) {
                     Button(action: {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         appState.updateQuantity(for: item, delta: -1)
                     }) {
                         Text("—")
-                            .font(.montserrat(.bold, size: 16))
+                            .font(.montserrat(.bold, size: 14))
                             .foregroundColor(Color(red: 0.45, green: 0.52, blue: 0.62))
-                            .frame(width: 24, height: 32)
+                            .frame(width: 20, height: 28)
                     }
                     .buttonStyle(.plain)
 
                     Text("\(item.quantity)")
-                        .font(.montserrat(.black, size: 17))
+                        .font(.montserrat(.black, size: 15))
                         .foregroundColor(Color(red: 0.08, green: 0.12, blue: 0.18))
                         .frame(minWidth: 16)
 
@@ -354,18 +369,18 @@ public struct CartView: View {
                         appState.updateQuantity(for: item, delta: 1)
                     }) {
                         Text("+")
-                            .font(.montserrat(.bold, size: 18))
+                            .font(.montserrat(.bold, size: 16))
                             .foregroundColor(Color(red: 0.13, green: 0.77, blue: 0.36))
-                            .frame(width: 24, height: 32)
+                            .frame(width: 20, height: 28)
                     }
                     .buttonStyle(.plain)
                 }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
                 .background(Color(red: 0.94, green: 0.96, blue: 0.98))
-                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             }
-            .padding(14)
+            .padding(12)
         }
         .background(
             RoundedRectangle(cornerRadius: 26, style: .continuous)
@@ -448,7 +463,8 @@ public struct CartView: View {
         formatter.numberStyle = .currency
         formatter.locale = Locale(identifier: "es_AR")
         formatter.maximumFractionDigits = 0
-        return formatter.string(from: NSNumber(value: value)) ?? "$\(Int(value))"
+        let str = formatter.string(from: NSNumber(value: value)) ?? "$\(Int(value))"
+        return str.replacingOccurrences(of: " ", with: "\u{00A0}")
     }
 }
 

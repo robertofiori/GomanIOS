@@ -119,30 +119,34 @@ public struct CustomFloatingTabBar: View {
                 }
                 .buttonStyle(.plain)
 
-                // 5. ESCANEAR (con badge "MUY PRONTO")
+                // 5. ESCANEAR (con badge "PRONTO")
                 Button(action: {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     selectedTab = .scanner
                 }) {
-                    VStack(spacing: 4) {
-                        // Badge "MUY PRONTO"
-                        Text("MUY PRONTO")
+                    VStack(spacing: 3) {
+                        // Badge "PRONTO"
+                        Text("PRONTO")
                             .font(.montserrat(.black, size: 7))
-                            .tracking(0.5)
+                            .tracking(0.2)
                             .foregroundColor(.white)
                             .padding(.horizontal, 5)
                             .padding(.vertical, 2)
                             .background(Color(red: 0.98, green: 0.55, blue: 0.08)) // Naranja
                             .clipShape(Capsule())
+                            .lineLimit(1)
+                            .fixedSize()
                             .offset(y: -2)
 
                         Image(systemName: "barcode.viewfinder")
-                            .font(.system(size: 20))
+                            .font(.system(size: 19))
                             .foregroundColor(selectedTab == .scanner ? Color(red: 0.13, green: 0.77, blue: 0.36) : Color(red: 0.58, green: 0.64, blue: 0.72))
 
                         Text("ESCANEAR")
-                            .font(.montserrat(.black, size: 9))
-                            .tracking(0.5)
+                            .font(.montserrat(.black, size: 8))
+                            .tracking(0.2)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
                             .foregroundColor(selectedTab == .scanner ? Color(red: 0.08, green: 0.12, blue: 0.18) : Color(red: 0.58, green: 0.64, blue: 0.72))
                     }
                     .frame(maxWidth: .infinity)

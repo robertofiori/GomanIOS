@@ -405,26 +405,31 @@ public struct HomeView: View {
                         .font(.montserrat(.bold, size: 14))
                         .foregroundColor(Color(red: 0.08, green: 0.12, blue: 0.18))
                         .lineLimit(1)
+                        .truncationMode(.tail)
 
                     if item.isOptional {
                         Text("OPCIONAL")
-                            .font(.montserrat(.bold, size: 8))
+                            .font(.montserrat(.black, size: 8))
                             .foregroundColor(.white)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
                             .background(Color(red: 0.93, green: 0.12, blue: 0.47))
                             .clipShape(Capsule())
+                            .lineLimit(1)
+                            .fixedSize()
+                            .layoutPriority(2)
                     }
                 }
 
                 Text(formatPrice(item.selectedPrice.price * Double(item.quantity)))
                     .font(.montserrat(.extraBold, size: 16))
                     .foregroundColor(Color(red: 0.13, green: 0.77, blue: 0.36))
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
-            Spacer()
-
-            HStack(spacing: 12) {
+            HStack(spacing: 8) {
                 Button(action: {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     appState.updateQuantity(for: item, delta: -1)
@@ -432,6 +437,7 @@ public struct HomeView: View {
                     Text("—")
                         .font(.montserrat(.bold, size: 13))
                         .foregroundColor(Color(red: 0.58, green: 0.64, blue: 0.72))
+                        .frame(width: 18, height: 26)
                 }
                 .buttonStyle(.plain)
 
@@ -445,13 +451,14 @@ public struct HomeView: View {
                     appState.updateQuantity(for: item, delta: 1)
                 }) {
                     Text("+")
-                        .font(.montserrat(.bold, size: 17))
+                        .font(.montserrat(.bold, size: 16))
                         .foregroundColor(Color(red: 0.13, green: 0.77, blue: 0.36))
+                        .frame(width: 18, height: 26)
                 }
                 .buttonStyle(.plain)
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
             .background(Color(red: 0.94, green: 0.96, blue: 0.98))
             .clipShape(Capsule())
         }
@@ -650,6 +657,7 @@ public struct HomeView: View {
         formatter.numberStyle = .currency
         formatter.locale = Locale(identifier: "es_AR")
         formatter.maximumFractionDigits = 0
-        return formatter.string(from: NSNumber(value: value)) ?? "$\(Int(value))"
+        let str = formatter.string(from: NSNumber(value: value)) ?? "$\(Int(value))"
+        return str.replacingOccurrences(of: " ", with: "\u{00A0}")
     }
 }

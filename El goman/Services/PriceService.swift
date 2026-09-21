@@ -88,19 +88,37 @@ public actor PriceService {
         let decoder = JSONDecoder()
         let rawPrices = try decoder.decode([SupermarketPrice].self, from: data)
 
+        // Helper para normalizar cadenas quitando acentos y diacríticos
+        func normalizeStr(_ str: String) -> String {
+            str.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current).lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+
         // Filtrar cadenas y supermercados según la localidad
         var validPrices = rawPrices.filter { item in
-            let lowerSM = item.supermarket.lowercased()
+            let normSM = normalizeStr(item.supermarket)
             // Excluir DIA si aplica como en la web
-            if lowerSM.contains("dia") { return false }
+            if normSM.contains("dia") { return false }
             return true
         }
 
-        if location.city.localizedCaseInsensitiveContains("Bahía Blanca") || location.city.localizedCaseInsensitiveContains("Bahia Blanca") {
-            let allowed = ["vea", "carrefour", "chango mas", "cooperativa obrera", "la coope"]
+        let normCity = normalizeStr(location.city)
+        if normCity.contains("bahia blanca") {
+            let allowed = [
+                "vea",
+                "carrefour",
+                "chango mas",
+                "chango más",
+                "changomas",
+                "masonline",
+                "cooperativa obrera",
+                "la coope"
+            ].map(normalizeStr)
+
             validPrices = validPrices.filter { item in
-                let lower = item.supermarket.lowercased()
-                return allowed.contains { lower.contains($0) }
+                let normSM = normalizeStr(item.supermarket)
+                return allowed.contains { allowedItem in
+                    normSM.contains(allowedItem) || allowedItem.contains(normSM)
+                }
             }
         }
 

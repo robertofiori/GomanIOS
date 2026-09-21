@@ -8,6 +8,9 @@
 import Foundation
 import SwiftUI
 
+fileprivate func normalizeStr(_ str: String) -> String {
+    str.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current).lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+}
 // MARK: - Bank Discount Model
 public struct BankDiscount: Identifiable, Hashable, Sendable {
     public let id: String
@@ -43,7 +46,7 @@ public struct BankDiscount: Identifiable, Hashable, Sendable {
             discount: 0.30,
             cap: 4000,
             days: [2, 3], // Lunes y Martes
-            supermarkets: ["vea", "carrefour", "chango mas", "cooperativa obrera", "la coope"],
+            supermarkets: ["vea", "carrefour", "chango mas", "chango más", "changomas", "masonline", "cooperativa obrera", "la coope"],
             color: Color(red: 0, green: 173/255, blue: 239/255)
         ),
         BankDiscount(
@@ -52,7 +55,7 @@ public struct BankDiscount: Identifiable, Hashable, Sendable {
             discount: 0.35,
             cap: 5000,
             days: [4, 5], // Miércoles y Jueves
-            supermarkets: ["carrefour", "vea", "chango mas"],
+            supermarkets: ["carrefour", "vea", "chango mas", "chango más", "changomas", "masonline"],
             color: Color(red: 0, green: 74/255, blue: 142/255)
         ),
         BankDiscount(
@@ -70,19 +73,23 @@ public struct BankDiscount: Identifiable, Hashable, Sendable {
             discount: 0.15,
             cap: 2000,
             days: [1, 2, 3, 4, 5, 6, 7], // Todos los días
-            supermarkets: ["vea", "carrefour", "chango mas"],
+            supermarkets: ["vea", "carrefour", "chango mas", "chango más", "changomas", "masonline"],
             color: Color(red: 1/255, green: 254/255, blue: 156/255)
         )
     ]
 
+
+
     public static func getApplicableDiscount(for supermarket: String, userBanks: Set<String>) -> BankDiscount? {
         let weekday = Calendar.current.component(.weekday, from: Date())
-        let lowerSM = supermarket.lowercased()
+        let normSM = normalizeStr(supermarket)
 
         let valid = availableDiscounts.filter { discount in
-            userBanks.contains(discount.id) &&
-            discount.days.contains(weekday) &&
-            discount.supermarkets.contains(where: { lowerSM.contains($0) })
+            guard userBanks.contains(discount.id) && discount.days.contains(weekday) else { return false }
+            return discount.supermarkets.contains { sm in
+                let normPattern = normalizeStr(sm)
+                return normSM.contains(normPattern) || normPattern.contains(normSM)
+            }
         }
 
         return valid.max(by: { $0.discount < $1.discount })
@@ -129,7 +136,8 @@ public enum BasketOptimizer {
             allSupermarkets.insert(item.selectedPrice.supermarket)
         }
 
-        let currentTotal = items.reduce(0.0) { $0 + ($1.selectedPrice.price * Double($1.quantity)) }
+        let activeItems = items.filter { !$0.isOptional }
+        let currentTotal = activeItems.reduce(0.0) { $0 + ($1.selectedPrice.price * Double($1.quantity)) }
 
         var totals: [SupermarketBasketTotal] = []
 
@@ -138,25 +146,33 @@ public enum BasketOptimizer {
             var itemCount = 0
             var missingItems = 0
 
-            for item in items {
-                if let priceInSm = item.allPrices.first(where: { $0.supermarket.localizedCaseInsensitiveContains(sm) && $0.inStock && $0.price > 0 }) {
+            for item in activeItems {
+                let normSM = normalizeStr(sm)
+                if let priceInSm = item.allPrices.first(where: {
+                    let normPriceSM = normalizeStr($0.supermarket)
+                    return (normPriceSM.contains(normSM) || normSM.contains(normPriceSM)) && $0.inStock && $0.price > 0
+                }) {
                     rawTotal += priceInSm.price * Double(item.quantity)
                     itemCount += 1
-                } else if item.selectedPrice.supermarket.localizedCaseInsensitiveContains(sm) {
-                    rawTotal += item.selectedPrice.price * Double(item.quantity)
-                    itemCount += 1
                 } else {
-                    // Si no está disponible en este súper, estimar con el promedio de otros supermercados
-                    let validPrices = item.allPrices.filter { $0.inStock && $0.price > 0 }
-                    let avgPrice = !validPrices.isEmpty
-                        ? validPrices.reduce(0.0) { $0 + $1.price } / Double(validPrices.count)
-                        : item.selectedPrice.price
-                    rawTotal += avgPrice * Double(item.quantity)
-                    missingItems += 1
+                    let normSelected = normalizeStr(item.selectedPrice.supermarket)
+                    if normSelected.contains(normSM) || normSM.contains(normSelected) {
+                        rawTotal += item.selectedPrice.price * Double(item.quantity)
+                        itemCount += 1
+                    } else {
+                        // Si no está disponible en este súper, estimar con el promedio de otros supermercados
+                        let validPrices = item.allPrices.filter { $0.inStock && $0.price > 0 }
+                        let avgPrice = !validPrices.isEmpty
+                            ? validPrices.reduce(0.0) { $0 + $1.price } / Double(validPrices.count)
+                            : item.selectedPrice.price
+                        rawTotal += avgPrice * Double(item.quantity)
+                        missingItems += 1
+                    }
                 }
             }
 
-            let matchPercentage = Int(round((Double(itemCount) / Double(items.count)) * 100))
+            let denominator = max(activeItems.count, 1)
+            let matchPercentage = Int(round((Double(itemCount) / Double(denominator)) * 100))
             let discountInfo = BankDiscount.getApplicableDiscount(for: sm, userBanks: userBanks)
 
             let effectiveTotal: Double
@@ -184,8 +200,8 @@ public enum BasketOptimizer {
 
         totals.sort { $0.effectiveTotal < $1.effectiveTotal }
 
-        // Mínimo teórico: comprar cada producto individual en su lugar más barato
-        let theoreticalMin = items.reduce(0.0) { sum, item in
+        // Mínimo teórico: comprar cada producto individual en su lugar más barato (excluyendo opcionales)
+        let theoreticalMin = activeItems.reduce(0.0) { sum, item in
             let validPrices = item.allPrices.filter { $0.inStock && $0.price > 0 }
             let bestPrice = !validPrices.isEmpty
                 ? min(validPrices.map(\.price).min() ?? item.selectedPrice.price, item.selectedPrice.price)

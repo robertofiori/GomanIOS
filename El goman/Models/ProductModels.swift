@@ -78,7 +78,8 @@ public struct SupermarketPrice: Identifiable, Codable, Hashable, Sendable {
 
     enum CodingKeys: String, CodingKey {
         case id
-        case supermarket = "name"
+        case supermarket
+        case name
         case price
         case originalPrice
         case isOffer
@@ -94,7 +95,9 @@ public struct SupermarketPrice: Identifiable, Codable, Hashable, Sendable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         
         let rawId = try? container.decode(String.self, forKey: .id)
-        let name = (try? container.decode(String.self, forKey: .supermarket)) ?? "Supermercado"
+        let name = (try? container.decode(String.self, forKey: .supermarket))
+            ?? (try? container.decode(String.self, forKey: .name))
+            ?? "Supermercado"
         self.supermarket = name
         self.id = (rawId != nil && !rawId!.isEmpty) ? rawId! : UUID().uuidString
         
@@ -123,6 +126,7 @@ public struct SupermarketPrice: Identifiable, Codable, Hashable, Sendable {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
         try container.encode(supermarket, forKey: .supermarket)
+        try container.encode(supermarket, forKey: .name)
         try container.encode(price, forKey: .price)
         try container.encodeIfPresent(originalPrice, forKey: .originalPrice)
         try container.encodeIfPresent(isOffer, forKey: .isOffer)

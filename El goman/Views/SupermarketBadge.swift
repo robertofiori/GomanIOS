@@ -41,7 +41,7 @@ public struct SupermarketBadge: View {
         let lower = name.lowercased()
         if lower.contains("vea") { return "Vea" }
         if lower.contains("carrefour") { return "Carrefour" }
-        if lower.contains("chango") { return "ChangoMás" }
+        if lower.contains("chango") || lower.contains("masonline") { return "ChangoMás" }
         if lower.contains("cooperativa") || lower.contains("coope") { return "La Coope" }
         if lower.contains("coto") { return "Coto" }
         if lower.contains("dia") { return "Día" }
@@ -52,7 +52,7 @@ public struct SupermarketBadge: View {
         let lower = name.lowercased()
         if lower.contains("vea") { return Color.green }
         if lower.contains("carrefour") { return Color.blue }
-        if lower.contains("chango") { return Color.orange }
+        if lower.contains("chango") || lower.contains("masonline") { return Color.orange }
         if lower.contains("cooperativa") || lower.contains("coope") { return Color.teal }
         if lower.contains("coto") { return Color.red }
         return Color.secondary
